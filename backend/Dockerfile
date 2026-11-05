@@ -15,6 +15,8 @@ RUN apt-get update \
 # Instalar deps primero (mejor cache de capas).
 COPY pyproject.toml README.md ./
 COPY app ./app
+COPY alembic.ini ./
+COPY alembic ./alembic
 RUN pip install --upgrade pip && pip install .
 
 EXPOSE 8200

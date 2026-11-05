@@ -3,3 +3,6 @@ dist/
 .vite/
 .env
 .env.local
+
+.env.*
+*.tsbuildinfo

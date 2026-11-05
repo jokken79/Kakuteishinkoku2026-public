@@ -1,0 +1,34 @@
+name: Docker smoke
+
+on:
+  push:
+    branches: [main, codex/docker-isolated-validation]
+  pull_request:
+
+jobs:
+  isolated-docker:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE_PROJECT_NAME: kakutei-ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start isolated stack
+        run: docker compose up -d --build
+      - name: Apply migrations to empty test database
+        run: docker compose exec -T backend alembic upgrade head
+      - name: Verify API and frontend proxy
+        run: |
+          curl --fail --retry 15 --retry-connrefused --retry-delay 2 http://127.0.0.1:8200/api/v1/health
+          curl --fail --retry 15 --retry-connrefused --retry-delay 2 http://127.0.0.1:5200/api/v1/onboarding/status
+          curl --fail http://127.0.0.1:5200/ | grep -q '<html'
+      - name: Verify data survives backend recreation
+        run: |
+          docker compose exec -T backend python -c "from pathlib import Path; Path('/app/data/synthetic-smoke.txt').write_text('synthetic')"
+          docker compose up -d --force-recreate backend
+          docker compose exec -T backend python -c "from pathlib import Path; assert Path('/app/data/synthetic-smoke.txt').read_text() == 'synthetic'"
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Remove isolated test resources
+        if: always()
+        run: docker compose down --volumes --remove-orphans

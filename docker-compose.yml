@@ -1,17 +1,14 @@
 # docker-compose — 確定申告 2026
-# Puertos host: postgres 5440, backend 8200, frontend 5200 (libres, no chocan).
+# Puertos locales: backend 8200 y frontend 5200; PostgreSQL solo en la red interna.
 # Docker NO es requerido para desarrollo nativo; ver READMEs de backend/ y frontend/.
 
 services:
   postgres:
     image: postgres:16
-    container_name: kakutei_postgres
     environment:
       POSTGRES_USER: kakutei
       POSTGRES_PASSWORD: kakutei
       POSTGRES_DB: kakuteishinkoku
-    ports:
-      - "127.0.0.1:5440:5432"
     volumes:
       - kakutei_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -23,9 +20,10 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: kakutei_backend
     environment:
       DATABASE_URL: postgresql+psycopg2://kakutei:kakutei@postgres:5432/kakuteishinkoku
+    volumes:
+      - kakutei_appdata:/app/data
     ports:
       - "127.0.0.1:8200:8200"
     depends_on:
@@ -35,9 +33,6 @@ services:
   frontend:
     build:
       context: ./frontend
-    container_name: kakutei_frontend
-    environment:
-      VITE_API_URL: http://localhost:8200
     ports:
       - "127.0.0.1:5200:5200"
     depends_on:
@@ -45,3 +40,4 @@ services:
 
 volumes:
   kakutei_pgdata:
+  kakutei_appdata:

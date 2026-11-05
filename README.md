@@ -17,4 +17,8 @@ Aplicación local para organizar ingresos, gastos y borradores de 確定申告. 
 
 Los archivos de evidencia y declaraciones se guardan en `backend/data/`; mantenga copias de seguridad privadas. No utilice el seed de desarrollo con datos reales.
 
-Verificación: backend `ruff check app tests`, `mypy app`, `pytest -q`; frontend `npm run lint`, `npm run typecheck`, `npm run test:run`, `npm run build`. La configuración Docker incluida no ha sido validada para esta versión.
+Verificación: backend `ruff check app tests`, `mypy app`, `pytest -q`; frontend `npm run lint`, `npm run typecheck`, `npm run test:run`, `npm run build`.
+
+## Docker (proyecto local aislado)
+
+Ejecute `docker compose up -d --build` y, en una instalación nueva, `docker compose exec backend alembic upgrade head`. Abra `http://127.0.0.1:5200`. Los documentos se guardan en el volumen `kakutei_appdata` y la base de datos en `kakutei_pgdata`; haga una copia de seguridad antes de actualizar una base existente. No ejecute `docker compose down -v` si necesita conservarlos.
