@@ -11,7 +11,6 @@ import {
   filingCsvUrl,
   filingOfficialPackageUrl,
   filingPdfUrl,
-  filingXtxUrl,
   ApiError,
   type FilingPdfForm,
   type FilingSummary,
@@ -73,7 +72,7 @@ export function FilingScreen() {
           </h2>
           <HelpSubtitle term="確定申告" />
           <p className="text-sm text-[var(--color-sumi-soft)]">
-            申告書の生成（PDF / .xtx / CSV）
+            申告書の生成（PDF / CSV）
           </p>
         </div>
       </header>
@@ -657,9 +656,9 @@ function DownloadsCard({ filing }: { filing: FilingSummary }) {
 
       <div className="mt-4">
         <DownloadRow href={filingOfficialPackageUrl(id)} icon="archive" title="申告書類の下書き ZIP"
-          desc="PDF・CSV・帳簿。XTX puede no estar incluido" tag="ZIP" />
+          desc="PDF・CSV・帳簿。XTX no está incluido" tag="ZIP" />
       </div>
-      <p className="mt-3 text-sm">Revisa el aviso dentro del ZIP: el XTX se omite si contiene partidas no admitidas. Las deducciones sin categoría definida no se asignan automáticamente a su casilla. En 青色申告決算書 las páginas 2 y 3 están en blanco; en 白色, la página 2 de la 収支内訳書 está en blanco. Complétalas cuando corresponda. La validación de formato no confirma la aceptación por e-Tax.</p>
+      <p className="mt-3 text-sm">Revisa el aviso dentro del ZIP: el XTX está deshabilitado hasta validar el XSD oficial. Las deducciones sin categoría definida no se asignan automáticamente a su casilla. En 青色申告決算書 las páginas 2 y 3 están en blanco; en 白色, la página 2 de la 収支内訳書 está en blanco. Complétalas cuando corresponda. La validación de formato no confirma la aceptación por e-Tax.</p>
 
       <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {PDF_FORMS.map((f) => (
@@ -679,18 +678,14 @@ function DownloadsCard({ filing }: { filing: FilingSummary }) {
           e-Tax 用ファイル
         </p>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          <DownloadRow
-            href={filingXtxUrl(id)}
-            icon="bolt"
-            title="電子申告データ"
-            desc="e-Taxソフト(WEB版)へ取込"
-            tag=".xtx"
-          />
+          <p className="rounded-lg border border-[var(--color-hairline)] p-3 text-sm">
+            XTX no disponible: la estructura aún no cumple el esquema oficial de e-Tax.
+          </p>
           <DownloadRow
             href={filingCsvUrl(id)}
             icon="box"
             title="決算書 CSV"
-            desc="財務諸表（SHIFT-JIS）"
+            desc="参考CSV（SHIFT-JIS・e-Tax未検証）"
             tag="CSV"
           />
         </div>
@@ -780,11 +775,9 @@ export function DownloadRow({
 // --- Guia e-Tax + disclaimer ------------------------------------------------
 
 const ETAX_STEPS = [
-  "上の「電子申告データ（.xtx）」をダウンロードします。",
-  "e-Taxソフト(WEB版) にマイナンバーカードでログインします。",
-  "「作成済みデータの読込」から .xtx を取り込み、内容を確認します。",
-  "電子署名（マイナンバーカード）を行い、送信します。",
-  "郵送・持参の場合は、PDFの申告書を印刷してご利用ください。",
+  "XTXの出力は公式スキーマの検証完了まで停止しています。",
+  "国税庁の確定申告書等作成コーナーで内容を入力し、確認してください。",
+  "提出方法や必要な書類は国税庁または税務署にご確認ください。",
 ];
 
 function EtaxGuideCard() {

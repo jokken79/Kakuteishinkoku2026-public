@@ -134,12 +134,12 @@ def test_unknown_tax_office_is_not_replaced_with_tsushima(
         assert "津島" not in document[0].get_text(clip=pymupdf.Rect(55, 20, 130, 43))
     xtx = client.get(f"/api/v1/filing/{draft_id}/xtx")
     assert xtx.status_code == 409
-    assert xtx.json()["detail"]["code"] == "tax_office_unrecognized"
+    assert xtx.json()["detail"]["code"] == "xtx_xsd_not_verified"
     package = client.get(f"/api/v1/filing/{draft_id}/official-package")
     assert package.status_code == 200
     with zipfile.ZipFile(io.BytesIO(package.content)) as archive:
         assert not any(name.endswith(".xtx") for name in archive.namelist())
-        assert "oficina fiscal" in archive.read("00_LEER_REVISION.txt").decode("utf-8")
+        assert "XSD oficial" in archive.read("00_LEER_REVISION.txt").decode("utf-8")
 
 
 def test_draft_returns_structured_summary(client: TestClient) -> None:
@@ -433,7 +433,7 @@ def test_self_disability_entry_rejects_duplicates_and_invalid_amount(client: Tes
     for path in ("xtx", "xtx/validation"):
         response = client.get(f"/api/v1/filing/{draft['draft_id']}/{path}")
         assert response.status_code == 409
-        assert response.json()["detail"]["code"] == "xtx_incomplete_mapping"
+        assert response.json()["detail"]["code"] == "xtx_xsd_not_verified"
     package = client.get(f"/api/v1/filing/{draft['draft_id']}/official-package")
     assert package.status_code == 200
     with zipfile.ZipFile(io.BytesIO(package.content)) as archive:
@@ -453,7 +453,7 @@ def test_xtx_rejects_unmapped_income_source(client: TestClient) -> None:
     draft = client.post("/api/v1/filing/draft?year=2025").json()
     response = client.get(f"/api/v1/filing/{draft['draft_id']}/xtx")
     assert response.status_code == 409
-    assert response.json()["detail"]["code"] == "xtx_incomplete_mapping"
+    assert response.json()["detail"]["code"] == "xtx_xsd_not_verified"
 
 
 def test_xtx_internal_disability_field_only_when_unambiguous(session: Session) -> None:
@@ -649,27 +649,12 @@ def test_official_package_missing_file_returns_clear_error(
 # --- .xtx (XML) -----------------------------------------------------------
 
 
-def test_xtx_is_valid_xml(client: TestClient) -> None:
-    """El .xtx es el sobre oficial KOA020 (VR 23.0) y parsea como XML."""
+def test_xtx_is_unavailable_until_official_schema_is_verified(client: TestClient) -> None:
     draft = client.post("/api/v1/filing/draft?year=2025").json()
-    resp = client.get(f"/api/v1/filing/{draft['draft_id']}/xtx")
-    assert resp.status_code == 200
-    assert resp.headers["cache-control"] == "no-store"
-    assert "xml" in resp.headers["content-type"]
-    # (a) parsea como XML; (e) encoding UTF-8 declarado standalone="no".
-    assert b'encoding="UTF-8"' in resp.content
-    assert b'standalone="no"' in resp.content
-    root = ET.fromstring(resp.content)
-    # (b) raíz <DATA> con <KOA020 VR="23.0">.
-    assert root.tag == "DATA"
-    form = root.find("KOA020")
-    assert form is not None
-    assert form.attrib["VR"] == "23.0"
-    # (d) NO hay bloque KOA210 / 決算書 en el XML.
-    assert root.find(".//KOA210") is None
-    # 合計所得金額 (ABB00410) y 申告納税額 (ABB00720) presentes con el valor del demo.
-    assert root.find(".//ABB00410").text == str(draft["total_income"])
-    assert root.find(".//ABB00720").text is not None
+    for suffix in ("xtx", "xtx/validation"):
+        response = client.get(f"/api/v1/filing/{draft['draft_id']}/{suffix}")
+        assert response.status_code == 409
+        assert response.json()["detail"]["code"] == "xtx_xsd_not_verified"
 
 
 def test_xtx_owner_real_case_r7() -> None:
@@ -722,14 +707,14 @@ def test_xtx_owner_real_case_r7() -> None:
         engine.dispose()
 
 
-def test_xtx_only_confirmed_tags_and_int_format(client: TestClient) -> None:
+def test_xtx_only_confirmed_tags_and_int_format(session: Session) -> None:
     """Validación de esquema: todo tag ABA/ABB emitido está en el set CONFIRMADO
     (research 10 / CAB oficial) — cero tags inventados — y los montos son enteros
     sin separadores de miles."""
     from app.services.forms import etax_schema_r7 as s
+    from app.services.forms.etax_export import build_xtx
 
-    draft = client.post("/api/v1/filing/draft?year=2025").json()
-    content = client.get(f"/api/v1/filing/{draft['draft_id']}/xtx").content
+    content = build_xtx(build_filing_draft(session, 2025))
     root = ET.fromstring(content)
 
     # Set de tags ABA/ABB confirmados (constantes TAG_*/GROUP del esquema).
@@ -786,16 +771,18 @@ def test_official_package_zip_contains_verified_documents(client: TestClient) ->
             "02_kessansho_official.pdf",
             "03_shiwakecho.pdf",
             "04_motocho.pdf",
-            "05_shinkoku_2025.xtx",
             "06_kessansho_2025.csv",
         }.issubset(names)
 
         manifest = json.loads(archive.read("00_manifest.json").decode("utf-8"))
-        assert manifest["checks"]["xtx_validation"]["ok"] is True
-        assert manifest["checks"]["xtx_validation"]["errors"] == 0
-        assert manifest["basis"]["etax"] == "KOA020 VR 23.0 + 決算書 CSV（SHIFT-JIS）"
+        assert manifest["checks"]["xtx_included"] is False
+        assert manifest["checks"]["xtx_validation"] is None
+        assert not any(name.endswith(".xtx") for name in names)
+        assert manifest["basis"]["etax"] == (
+            "XTX no disponible; CSV de referencia sin validar para e-Tax"
+        )
         assert any("2・3ページは未記入" in note for note in manifest["notes"])
-        assert any("受付" in note for note in manifest["notes"])
+        assert any("XTX" in note for note in manifest["notes"])
 
         for pdf_name in (
             "01_shinkokusho_official.pdf",
@@ -805,7 +792,6 @@ def test_official_package_zip_contains_verified_documents(client: TestClient) ->
         ):
             assert archive.read(pdf_name).startswith(b"%PDF-")
 
-        ET.fromstring(archive.read("05_shinkoku_2025.xtx"))
         assert "損益計算書" in archive.read("06_kessansho_2025.csv").decode("shift_jis")
 
 

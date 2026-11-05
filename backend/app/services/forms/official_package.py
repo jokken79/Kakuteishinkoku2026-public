@@ -169,7 +169,7 @@ def _manifest(
                     "source": "国税庁 令和7年分様式",
                 },
             ],
-            "etax": "KOA020 VR 23.0 + 決算書 CSV（SHIFT-JIS）",
+            "etax": "XTX no disponible; CSV de referencia sin validar para e-Tax",
         },
         "checks": {
             "xtx_validation": validation,
@@ -192,7 +192,7 @@ def _manifest(
             ("青色申告決算書の2・3ページは未記入です。必要事項を確認し、記入してください。"
              if result.filing_type != FilingType.SHIROIRO.value
              else "収支内訳書の2ページは未記入です。必要事項を確認し、記入してください。"),
-            "XTXの検証は形式の検査であり、e-Taxの受付や申告内容の正確性を保証しません。",
+            "XTXは公式スキーマの検証完了まで含まれません。",
             "提出前にe-Taxまたは税務署提出用として内容を必ず確認してください。",
             "マイナンバー等の最終確認・追記が必要な場合があります。",
         ],
@@ -201,7 +201,7 @@ def _manifest(
 
 
 def build_official_package(
-    session: Session, fy: FiscalYear, result: FilingDraftResult, *, include_xtx: bool = True,
+    session: Session, fy: FiscalYear, result: FilingDraftResult, *, include_xtx: bool = False,
 ) -> bytes:
     """申告書類一式をZIPで生成する。
 
@@ -213,16 +213,15 @@ def build_official_package(
     Returns:
         Bytes del ZIP con PDFs oficiales, e-Tax/CSV, libros y manifiesto.
     """
+    if include_xtx:
+        raise ValueError("XTX no disponible: el esquema oficial aún no está validado")
     files = _base_files(session, fy, result, include_xtx=include_xtx)
     notice = (
         "BORRADOR PARA REVISIÓN — NO SE ENVÍA AUTOMÁTICAMENTE\n"
         "Los PDF contienen campos sin completar; verifica cada documento.\n"
         "Las deducciones sin categoría definida no se asignan automáticamente a su casilla.\n"
-        + ("El archivo XTX está incluido; la validación no garantiza aceptación en e-Tax.\n"
-           if include_xtx else
-           "NO INCLUYE XTX: falta una oficina fiscal reconocida o hay partidas "
-           "que la app aún no exporta. "
-           "Completa la declaración con la herramienta oficial.\n")
+        "NO INCLUYE XTX: el formato aún no cumple el XSD oficial. "
+        "Completa la declaración con la herramienta oficial.\n"
     )
     files.insert(0, PackageFile("00_LEER_REVISION.txt", notice.encode("utf-8"),
                                 "text/plain; charset=utf-8", "Aviso de revisión"))

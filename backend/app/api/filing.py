@@ -7,12 +7,12 @@ Endpoints (bajo `/api/v1`):
 - ``GET  /filing/{id}/summary``           — resumen para revision humana.
 - ``GET  /filing/{id}/pdf?form=...``      — PDF de un formulario (StreamingResponse).
 - ``GET  /filing/{id}/official-package``  — ZIP con 申告書類一式 + manifiesto.
-- ``GET  /filing/{id}/xtx``               — archivo .xtx (XML).
+- ``GET  /filing/{id}/xtx``               — bloqueado hasta verificar el XSD.
 - ``GET  /filing/{id}/csv``               — CSV (SHIFT-JIS) del 決算書.
 
 ⚠️ Realismo (research 04 §6): la app GENERA archivos; **no envia a e-Tax** (no
-hay API publica de envio). El usuario sube el .xtx al e-Taxソフト(WEB版) o imprime
-el PDF para 郵送. Esta herramienta es de apoyo, no 税務代理.
+hay API publica de envio). El XTX permanece bloqueado hasta verificar el XSD;
+los PDF son borradores que requieren revisión. Esta herramienta es de apoyo, no 税務代理.
 """
 
 from __future__ import annotations
@@ -315,6 +315,18 @@ def _require_verified_export(year: int) -> None:
         )
 
 
+def _require_xtx_xsd_verified() -> None:
+    """Impide descargar un XML que no satisface el XSD oficial del procedimiento."""
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "code": "xtx_xsd_not_verified",
+            "message": "e-Tax形式の検証が完了していないため、XTXを出力できません。",
+            "details": {},
+        },
+    )
+
+
 def _require_complete_xtx(result: FilingDraftResult) -> None:
     """Evita emitir XTX cuando el mapeo omite partidas presentes."""
     from app.services.forms.tax_office import resolve_tax_office
@@ -596,15 +608,7 @@ def get_official_package(
     draft = _draft_or_404(db, draft_id)
     result, fy = _rebuild_for_draft(db, draft)
     _require_verified_export(result.year)
-    try:
-        _require_complete_xtx(result)
-        include_xtx = True
-    except HTTPException as exc:
-        if not isinstance(exc.detail, dict) or exc.detail.get("code") not in {
-            "xtx_incomplete_mapping", "tax_office_unrecognized",
-        }:
-            raise
-        include_xtx = False
+    include_xtx = False
     try:
         content = build_official_package(db, fy, result, include_xtx=include_xtx)
     except FileNotFoundError as exc:
@@ -639,6 +643,7 @@ def get_xtx(draft_id: uuid.UUID, db: Session = Depends(get_db)) -> StreamingResp
     draft = _draft_or_404(db, draft_id)
     result, _ = _rebuild_for_draft(db, draft)
     _require_verified_export(result.year)
+    _require_xtx_xsd_verified()
     _require_complete_xtx(result)
     content = build_xtx(result)
     return StreamingResponse(
@@ -672,6 +677,7 @@ def get_xtx_validation(
     draft = _draft_or_404(db, draft_id)
     result, _ = _rebuild_for_draft(db, draft)
     _require_verified_export(result.year)
+    _require_xtx_xsd_verified()
     _require_complete_xtx(result)
     report = validate_xtx(build_xtx(result), year=result.year)
     return report.as_dict()
