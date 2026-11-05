@@ -79,11 +79,24 @@ Ruff pasó y mypy no encontró problemas en 120 archivos.
 ## Comprobación del visor oficial
 
 La [función oficial de visualización sin iniciar sesión](https://www.e-tax.nta.go.jp/e-taxsoftweb/e-taxsoftweb.htm)
-se abrió desde el sitio oficial. El navegador de pruebas obtuvo una página sin
-selector de archivo porque la web falla al cargar `dojo.nls.etaxweb_dlparts_es`.
-No se cargó ni transmitió ningún archivo y no se inició sesión. La prueba de
-apertura/importación sigue UNVERIFIED. Mostrar un documento tampoco equivale a
-que una declaración haya sido aceptada.
+se abrió desde el sitio oficial. Inicialmente falló al cargar
+`dojo.nls.etaxweb_dlparts_es`; una emulación temporal de idioma japonés en la
+pestaña de pruebas permitió continuar. No se modificó el idioma del sistema.
+
+Se cargó exclusivamente un archivo sintético. El primer XML, serializado con
+`ns0:DATA`, pasaba el XSD pero fue rechazado por el visor con
+`XML構造チェックエラー`. Al usar namespace por defecto y los prefijos `gen` y
+`rdf`, la misma muestra pasó la lectura: el visor reconoció 2 páginas KOA020 y
+4 páginas KOA210. Este caso motivó una prueba de regresión de serialización.
+
+Se seleccionaron los seis formularios y la impresión con マイナンバー oculto.
+El visor anunció `PDF作成が完了しました。` (PDF creado). Al abrir el resultado,
+la herramienta de navegación bloqueó esa página por su política de seguridad.
+No se intentó eludir el bloqueo. No se ha descargado ni revisado visualmente el
+PDF para comprobar todos los importes. Por tanto: lectura de la muestra PASS;
+revisión visual del PDF UNVERIFIED. No hubo inicio de sesión, firma ni envío de
+una declaración. Mostrar el documento no equivale a aceptación tributaria.
+
 
 ## Formatos 令和8年分
 

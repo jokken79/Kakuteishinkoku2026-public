@@ -82,6 +82,10 @@ def test_generation_preserves_income_and_reconciles_fiscal_balance(
     result = build_xtx_document(
         draft, identity(draft), created_on=date(2026, 1, 1), details=details(draft)
     )
+    # El importador oficial rechazó ns0:DATA y admitió el namespace por defecto.
+    assert b'<DATA xmlns="http://xml.e-tax.nta.go.jp/XSD/shotoku"' in result.xml
+    assert b'xmlns:gen="http://xml.e-tax.nta.go.jp/XSD/general"' in result.xml
+    assert b'xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"' in result.xml
     root = ET.fromstring(result.xml)
     assert root.findtext(".//{*}ABB00030") == str(draft.sales_revenue)
     assert root.findtext(".//{*}AMF00530") == str(draft.business_income)

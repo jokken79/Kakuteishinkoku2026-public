@@ -15,6 +15,11 @@ SHOTOKU = "http://xml.e-tax.nta.go.jp/XSD/shotoku"
 GENERAL = "http://xml.e-tax.nta.go.jp/XSD/general"
 RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 
+# Prefijos convencionales del formato e-Tax para interoperabilidad del importador.
+ET.register_namespace("", SHOTOKU)
+ET.register_namespace("gen", GENERAL)
+ET.register_namespace("rdf", RDF)
+
 
 @dataclass(frozen=True)
 class XtxIdentity:
