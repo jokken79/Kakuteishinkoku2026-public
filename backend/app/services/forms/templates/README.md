@@ -74,6 +74,5 @@ Casillas con ceros pre-impresos (se estampan sólo los dígitos significativos):
 - 収支内訳書 一般用 白色 (`r07_05.pdf` FA7050) — se rellena P1 y se incluye P2
   sin rellenar para revisión manual (`shushi_official.py`).
   Layout espejado (col1 科目|金額, col2 金額|科目). Página `/Rotate 90`.
-- ✅ `.xtx` (KOA020 VR 23.0) — tags ABA/ABB alineados al CAB oficial (research 10),
-  validado en tests (sólo tags confirmados, montos enteros). 決算書 va por CSV
-  (KOA210 retirado del XML).
+- `.xtx`: descarga bloqueada; el generador heredado no cumple el XSD oficial.
+  El esquema incluye KOA210; falta verificar su uso y generar el 決算書 completo.

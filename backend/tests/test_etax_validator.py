@@ -55,11 +55,11 @@ def test_load_valid_tags_has_confirmed_set() -> None:
 # --- Caso válido -------------------------------------------------------------
 
 
-def test_valid_xtx_passes() -> None:
+def test_legacy_diagnostic_never_confirms_submission_readiness() -> None:
     data = _wrap("        <ABB00410>5818502</ABB00410>")
     report = validate_xtx(data, year=2025)
-    assert report.ok
-    assert report.errors == 0
+    assert not report.ok
+    assert "official_xsd_not_validated" in [i.code for i in report.issues]
     assert "ABB00410" in report.emitted_field_tags
 
 
@@ -89,7 +89,7 @@ def test_missing_form_is_error() -> None:
 def test_vr_mismatch_is_warning() -> None:
     data = _wrap("        <ABB00410>1</ABB00410>", vr="22.0")
     report = validate_xtx(data, year=2025)
-    assert report.ok  # solo warning
+    assert not report.ok  # falta validación XSD oficial
     assert "vr_mismatch" in [i.code for i in report.issues]
 
 
@@ -110,11 +110,11 @@ def test_rounding_violation_is_warning() -> None:
     # 課税所得 (ABB00580) debe ser múltiplo de 1000.
     data = _wrap("        <ABB00580>4612345</ABB00580>")
     report = validate_xtx(data, year=2025)
-    assert report.ok  # warning, no error
+    assert not report.ok  # falta validación XSD oficial
     assert "rounding" in [i.code for i in report.issues]
 
 
-def test_retired_koa210_is_error() -> None:
+def test_koa210_is_not_declared_retired() -> None:
     body = (
         "        <ABB00410>1</ABB00410>\n"
         "      </ABB00000>\n"
@@ -122,7 +122,7 @@ def test_retired_koa210_is_error() -> None:
         "      <ABB00000>"
     )
     data = _wrap(body)
-    assert "retired_form" in _codes(data)
+    assert "retired_form" not in _codes(data)
 
 
 # --- 年分 --------------------------------------------------------------------
@@ -137,8 +137,8 @@ def test_wrong_era_for_reiwa_year_is_warning() -> None:
 # --- Integración: .xtx real --------------------------------------------------
 
 
-def test_real_generated_xtx_is_valid() -> None:
-    """El .xtx real de ``build_xtx`` (seed) pasa el validador sin errores."""
+def test_generated_xtx_is_not_certified_by_legacy_diagnostic() -> None:
+    """El generador heredado nunca se certifica con el diagnóstico interno."""
     engine: Engine = create_db_engine("sqlite://")
     Base.metadata.create_all(engine)
     session: Session = get_session_factory(engine)()
@@ -149,8 +149,8 @@ def test_real_generated_xtx_is_valid() -> None:
     try:
         draft = build_filing_draft(session, year=2025)
         report = validate_xtx(build_xtx(draft), year=2025)
-        assert report.ok, [i.message for i in report.issues if i.level == "error"]
-        assert report.errors == 0
+        assert not report.ok
+        assert "official_xsd_not_validated" in [i.code for i in report.issues]
     finally:
         session.close()
         Base.metadata.drop_all(engine)

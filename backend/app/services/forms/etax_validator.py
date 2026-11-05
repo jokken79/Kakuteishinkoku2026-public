@@ -1,10 +1,8 @@
-"""Validador estructural del .xtx contra el esquema oficial KOA020 (令和7).
+"""Diagnóstico parcial del XML heredado KOA020 (令和7).
 
-Comprueba que el XML generado por ``etax_export.build_xtx`` respeta el esquema
-del NTA **extraído en** ``etax_schema_r7.json`` (research 10, del CAB oficial
-``e-tax09.CAB``). NO es validación XSD formal — esa requiere el ``e-tax19.CAB``
-(XMLスキーマ) del NTA; ver ``validate_xtx_against_xsd`` para el camino cuando se
-disponga del XSD. Este validador cubre, sin material licenciado:
+Comprueba solo algunos aspectos de la salida heredada de ``build_xtx``.
+El formato de esa salida no cumple el XSD oficial; este diagnóstico nunca
+certifica que el documento sea apto para presentar. Revisa:
 
     1. Prólogo XML exacto (UTF-8, standalone="no").
     2. Buen formato (well-formed) y sobre ``<DATA>``.
@@ -12,7 +10,6 @@ disponga del XSD. Este validador cubre, sin material licenciado:
        ``KOA020 → KOA020-1 → ABA00000 (cabecera) + ABB00000 (cuerpo)``.
     4. **Todo tag de campo emitido existe en el esquema confirmado** (no inventar
        tags: un tag desconocido rompe el envío real al NTA).
-    5. Ausencia del bloque ``KOA210`` (decremento del XML; va por CSV).
     6. Formato de montos (entero sin separadores) y redondeos legales
        (課税所得 千円, 申告納税額/納付額 百円, 基礎控除 万円).
     7. 年分 (Gengo 1-5, Nen 2 dígitos) coherente con el año fiscal.
@@ -51,9 +48,6 @@ _ROUNDING: dict[str, int] = {
     "ABB00650": 100,    # 住宅借入金等特別控除 — 百円未満切捨て.
     "ABB00550": 10000,  # 基礎控除 — 万円未満切捨て.
 }
-
-# Bloques retirados del XML que NO deben aparecer (irían por CSV).
-_RETIRED_FORMS = {"KOA210"}
 
 
 @dataclass(frozen=True)
@@ -128,7 +122,7 @@ def _expected_vr(year: int) -> str:
 
 
 def validate_xtx(xtx: bytes, *, year: int = 2025, schema_path: Path | None = None) -> XtxReport:
-    """Valida un .xtx contra el esquema confirmado KOA020.
+    """Diagnostica el formato heredado sin acreditar conformidad oficial.
 
     Args:
         xtx: Bytes del .xtx generado.
@@ -138,7 +132,13 @@ def validate_xtx(xtx: bytes, *, year: int = 2025, schema_path: Path | None = Non
     Returns:
         ``XtxReport`` con ``ok=False`` si hay al menos un error.
     """
-    issues: list[XtxIssue] = []
+    issues: list[XtxIssue] = [
+        XtxIssue(
+            "error",
+            "official_xsd_not_validated",
+            "Este diagnóstico no valida el XSD oficial ni acredita aptitud para presentar.",
+        ),
+    ]
     valid_tags = load_valid_tags(schema_path)
 
     # 1) Prólogo exacto.
@@ -195,18 +195,6 @@ def validate_xtx(xtx: bytes, *, year: int = 2025, schema_path: Path | None = Non
                 issues.append(
                     XtxIssue("warning", "missing_body", "Falta <ABB00000> (cuerpo 第一表).")
                 )
-
-    # 5) Bloques retirados (KOA210).
-    for el in root.iter():
-        if el.tag in _RETIRED_FORMS:
-            issues.append(
-                XtxIssue(
-                    "error",
-                    "retired_form",
-                    f"<{el.tag}> está retirado del XML (va por CSV); no debe emitirse.",
-                    tag=el.tag,
-                )
-            )
 
     # 6) Tags de campo: existencia en el esquema + formato de montos.
     emitted: list[str] = []

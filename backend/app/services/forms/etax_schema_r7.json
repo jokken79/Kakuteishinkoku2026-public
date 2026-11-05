@@ -4,18 +4,18 @@
   "_fiscal_year": "令和7 (2025)",
   "_extracted": "2026-06-21",
   "_notes": [
-    "KOA020 es la única 様式 activa en Ver22x y Ver23x — cubre 第一表・第二表 y formularios opcionales de pérdidas.",
-    "KOA210 (青色申告決算書一般用) desapareció del esquema XML a partir de Ver12x.",
-    "La 決算書 se envía por CSV separado (SHIFT-JIS); no tiene 様式ID propio en e-Tax XML desde ~2017.",
-    "Namespace: shotoku. El sobre raíz en el XML es el elemento KOA020 con atributos VR, softNM, sakuseiNM, sakuseiDay.",
+    "KOA020 contiene 第一表 y 第二表; el esquema de procedimiento también incluye otros formularios.",
+    "El esquema oficial RKO0010-250 incluye el grupo KOA210 versión 11; su aplicabilidad requiere verificación adicional.",
+    "El CSV generado por esta app es un resumen para revisión y no se ha validado para importación e-Tax.",
+    "El documento usa la raíz DATA con namespace shotoku y el sobre RKO0010, CATALOG y CONTENTS.",
     "Los montos (kingaku) van SIN separadores de miles en el XML — enteros puros.",
     "Las fechas usan elemento de kubun (1-5 para era) + elemento numérico para año (2 dígitos), mes, día.",
     "令和7 = era kubun 5, año 7.",
-    "La 利用者識別番号 se transmite fuera del cuerpo del documento en el protocolo de envío e-Tax (no es un campo de la 帳票); el campo del formulario es el マイナンバー (ABA00125).",
+    "El XSD exige NOZEISHA_ID en IT; ABA00125 referencia el マイナンバー cuando corresponda.",
     "Campos marcados con null: no encontrados con certeza en los Excel; NO inventar valores."
   ],
   "envelope": {
-    "root_tag": "KOA020",
+    "root_tag": "DATA",
     "namespace": "shotoku",
     "attributes": {
       "VR": "número de versión (ej: 23.0)",
@@ -201,13 +201,13 @@
       "tetsuzuki_id": "KOA020 (mismo que 第一表)"
     },
     "kessansho_ippan": {
-      "tetsuzuki_id": null,
+      "tetsuzuki_id": "KOA210",
       "version_last_seen": "Ver11x (11.0)",
       "last_version_xml_id": "KOA210",
       "name": "年分青色申告決算書(一般用)",
-      "status": "RETIRADA del esquema XML e-Tax (desapareció en Ver12x, ~2017). En la actualidad NO tiene 様式ID en el envío XML.",
-      "current_transmission_method": "CSV separado en SHIFT-JIS (conforme al CSV入力規則 del NTA). Ver build_kessansho_csv() en etax_export.py.",
-      "_warning": "NO intentar construir un bloque XML KOA210 para e-Tax actual — el validador del NTA lo rechazará. El flujo correcto es: .xtx (申告書 KOA020) + archivo CSV separado (決算書).",
+      "status": "Incluido en RKO0010-250.xsd como KOA210-11-0group; falta verificar la aplicabilidad para cada ejercicio.",
+      "current_transmission_method": "No verificado por esta aplicación.",
+      "_warning": "El generador no implementa KOA210 ni valida el CSV para importación.",
       "fields_from_ver11x_for_reference": {
         "売上(収入)金額 (casilla 1)": "AMF00100",
         "期首商品棚卸高 (casilla 2)": "AMF00120",
@@ -283,18 +283,18 @@
   "gaps": [
     {
       "campo": "利用者識別番号の位置",
-      "estado": "ACLARADO: va en el sobre de transmisión e-Tax (protocolo), no en el XML del 帳票. El campo del formulario es マイナンバー (ABA00125).",
-      "accion": "No requiere cambio en el XML del 帳票."
+      "estado": "El XSD exige NOZEISHA_ID en IT.",
+      "accion": "Implementar entrada segura, validación y referencias antes de habilitar XTX."
     },
     {
       "campo": "青色申告決算書のXML tags en versión actual",
-      "estado": "GAP CONFIRMADO: KOA210 retirado en Ver12x. Sin 様式ID en e-Tax XML actual.",
-      "accion": "Usar CSV separado. Los AMF0xxxx son solo referencia histórica."
+      "estado": "KOA210-11-0group está incluido en RKO0010-250.xsd; aplicabilidad y campos sin verificar.",
+      "accion": "Verificar especificaciones y mapear los datos necesarios sin inventar valores."
     },
     {
       "campo": "貸借対照表 (Balance Sheet) tags",
-      "estado": "null — no encontrado en los Excel de (申告). La BS es parte de la 決算書 que ya no tiene XML.",
-      "accion": "Continuar con CSV para BS también."
+      "estado": "Mapeo del balance pendiente.",
+      "accion": "Verificar el esquema oficial y los datos disponibles."
     },
     {
       "campo": "Sobre XML completo (namespaces, atributos de transmisión, firma electrónica)",

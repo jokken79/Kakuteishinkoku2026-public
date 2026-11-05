@@ -11,16 +11,8 @@ sueltos a lo largo del generador.
 así que cualquier campo del owner sin tag confirmado se omite (con un comentario
 ``# TODO: tag no confirmado`` en ``build_xtx``).
 
-Estructura del sobre (XML構造設計書 Ver23x):
-
-    <DATA>
-      <KOA020 VR="23.0" id="KOA020">
-        <KOA020-1>
-          <ABA00000> ...cabecera (ABA*)... </ABA00000>
-          <ABB00000> ...第一表 (ABB*)... </ABB00000>
-        </KOA020-1>
-      </KOA020>
-    </DATA>
+El XSD oficial exige un sobre RKO0010 y grupos anidados que el generador
+heredado aún no implementa. Estas constantes no acreditan conformidad.
 """
 
 from __future__ import annotations

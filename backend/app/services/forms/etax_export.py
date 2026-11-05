@@ -4,14 +4,9 @@
 directo**. Esta app GENERA archivos que el usuario sube al e-Taxソフト(WEB版) con
 マイナンバーカード, o imprime para 郵送. Aqui no se envia nada.
 
-Formatos:
-    - **.xtx (XML)**: el formato nativo de declaracion del NTA. Desde la
-      extracción del esquema oficial (research 10 → ``etax_schema_r7.json``)
-      emitimos el sobre **KOA020** (申告書 第一表・第二表, VR 23.0, namespace
-      shotoku) con los tags **ABA/ABB reales** del NTA. Encoding UTF-8.
-    - **CSV (SHIFT-JIS)**: para el 決算書 (CSV入力規則 del NTA). El 青色申告決算書
-      (KOA210) fue RETIRADO del esquema XML (~Ver12x) y se envía SOLO como CSV;
-      por eso NO se emite ningún bloque KOA210 en el .xtx.
+El generador XTX heredado es experimental: no cumple el XSD oficial y su
+salida no es apta para presentar. La descarga permanece bloqueada. El CSV es
+un resumen de revisión, no se ha validado como formato de importación e-Tax.
 """
 
 from __future__ import annotations
@@ -37,23 +32,9 @@ CSV_ENCODING = "shift_jis"
 # ─────────────────────────────────────────────────────────────────────────
 # ESQUEMA OFICIAL (.xtx) — sobre KOA020 (research 10, etax_schema_r7.json).
 #
-# Sobre del documento (XML構造設計書 Ver23x):
-#
-#   <?xml version="1.0" encoding="UTF-8" standalone="no" ?>
-#   <DATA>
-#     <KOA020 VR="23.0" id="KOA020">
-#       <KOA020-1>
-#         <ABA00000> ...cabecera (ABA*)... </ABA00000>
-#         <ABB00000> ...第一表 (ABB*)... </ABB00000>
-#       </KOA020-1>
-#     </KOA020>
-#   </DATA>
-#
-# Los tags viven en `etax_schema_r7.py` (derivados del JSON). Solo se pueblan
-# los campos con valor (no se emiten ceros donde la casilla iría vacía). El
-# 利用者識別番号 NO va en el cuerpo del 帳票 (va en el protocolo de transmisión);
-# el マイナンバー (ABA00125) es opcional. El 青色申告決算書 (KOA210) NO se emite
-# en XML — sigue como CSV (`build_kessansho_csv`).
+# El generador heredado no implementa el sobre RKO0010, sus referencias,
+# el catálogo RDF, la segunda página ni los anexos necesarios. El identificador
+# de usuario es obligatorio en IT según el XSD oficial. No habilitar su descarga.
 # ─────────────────────────────────────────────────────────────────────────
 
 
@@ -256,13 +237,8 @@ def _kyuyo_gross_from_breakdown(draft: FilingDraftResult) -> int:
 def build_xtx(draft: FilingDraftResult) -> bytes:
     """Genera el .xtx (XML oficial KOA020) de la declaración 令和7.
 
-    Emite el sobre oficial del NTA: ``<DATA><KOA020 VR="23.0">…`` con la
-    cabecera (ABA*) y el cuerpo del 第一表 (ABB*), mapeando cada valor del
-    ``FilingDraftResult`` a su tag oficial (ver ``etax_schema_r7.py``). Aplica
-    los formatos del esquema: montos enteros sin separadores, 百円未満切捨て en
-    住宅ローン控除/申告納税額, era kubun en el 年分. NO emite el 青色申告決算書
-    (KOA210 retirado) — ese va por CSV.
-
+    Genera el formato heredado de análisis, que no cumple el XSD oficial y no
+    debe usarse para presentar una declaración.
     Args:
         draft: Resultado del ensamblado del 確定申告.
 

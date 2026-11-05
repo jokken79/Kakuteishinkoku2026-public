@@ -21,3 +21,37 @@ La [página oficial de 国税庁](https://www.nta.go.jp/taxes/shiraberu/shinkoku
 El motor Docker de este equipo no respondió. En su lugar se ejecutó [un smoke aislado en GitHub Actions](https://github.com/jokken79/Kakuteishinkoku2026-public/actions/runs/41984169667): build de imágenes, inicio de PostgreSQL y servicios, migración Alembic de una base vacía, consulta de health y onboarding a través de nginx, y persistencia de un archivo sintético al recrear el backend. Resultado: **PASS**. El ejecutor y sus volúmenes temporales se eliminaron al terminar; no se usaron archivos ni bases personales.
 
 La primera ejecución detectó que PostgreSQL rechazaba una asignación entera a un campo booleano; la migración se corrigió y volvió a pasar en SQLite y PostgreSQL. La configuración integra nginx como proxy `/api`, copia las migraciones y monta un volumen para `backend/data`. La migración se ejecuta explícitamente; haga un respaldo antes de aplicarla a una base existente. No se probó Docker Desktop en este equipo ni la recuperación de una copia de seguridad.
+
+
+## Revisión adicional: generador XTX
+
+- El esquema oficial `RKO0010-250.xsd` y sus dependencias se compilaron con `lxml`.
+  Un control con datos sintéticos y las 28 constantes monetarias ABB del generador
+  colocadas en las rutas y orden del XSD pasó la validación estructural. Esta
+  comprobación no verifica que los importes, las casillas ni el documento sean
+  correctos para una declaración. El catálogo RDF se ha ampliado en el control experimental.
+- La salida real de `build_xtx` sigue fallando en la raíz: carece del namespace
+  y del sobre `RKO0010`, `CATALOG`, `CONTENTS` e `IT`. El XSD también exige en
+  `IT` el identificador `NOZEISHA_ID`; el perfil actual no lo proporciona.
+- Según `データ形式等仕様書.docx` del CAB oficial `e-tax01.CAB`, el catálogo
+  contiene metadatos RDF de los datos enviados y de los formularios. Pasar el
+  XSD con un RDF vacío no acredita que e-Tax acepte el archivo.
+- KOA210 figura en el esquema `RKO0010-250.xsd`; se eliminó la afirmación de
+  que está retirado. Falta verificar su aplicabilidad y el mapeo completo del
+  青色申告決算書, además del 第二表, las referencias, las casillas y las
+  condiciones de obligatoriedad. No se ha validado la importación real.
+- El validador heredado devuelve siempre `official_xsd_not_validated` como
+  error: sus comprobaciones parciales no pueden certificar que un archivo sea
+  apto para presentar. La descarga y el XTX en el ZIP siguen bloqueados.
+
+Fuentes oficiales: [especificaciones e-Tax](https://www.e-tax.nta.go.jp/shiyo/shiyo3.htm),
+[procedimientos de declaración](https://www.e-tax.nta.go.jp/tetsuzuki/shinkoku/shinkoku01.htm).
+
+
+## Sobre experimental
+
+El constructor experimental de RKO0010 recibe la identidad explícitamente y añade referencias RDF a IT y KOA020. La identidad no se persiste y las pruebas usan datos sintéticos. El XSD admite el sobre, pero esto no verifica la aceptación por e-Tax. La salida real de `build_xtx` todavía no lo utiliza y sigue bloqueada.
+
+Pendientes: implementar las dos páginas, sus referencias y anexos, validar las reglas fiscales y la integración del identificador y verificar la importación oficial.
+
+El control sintético también añadió un pagador, sus ingresos y retenciones en `KOA020-2`; pasó el XSD. Solo comprueba cuatro elementos estructurales, no la semántica fiscal ni el mapeo de la segunda página.
