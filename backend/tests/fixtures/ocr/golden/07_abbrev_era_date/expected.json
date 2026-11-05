@@ -1,0 +1,14 @@
+{
+  "date": "2024-07-20",
+  "vendor": "セブンイレブン 大手町店",
+  "total": 670,
+  "registration_number": "T3810111213141",
+  "is_qualified_invoice": true,
+  "tax_lines": [
+    {
+      "rate": 8,
+      "base": 621,
+      "tax": 49
+    }
+  ]
+}

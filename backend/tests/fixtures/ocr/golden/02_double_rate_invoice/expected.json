@@ -1,0 +1,19 @@
+{
+  "date": "2024-05-03",
+  "vendor": "スーパーマルショク 新宿店",
+  "total": 868,
+  "registration_number": "T9234567890123",
+  "is_qualified_invoice": true,
+  "tax_lines": [
+    {
+      "rate": 10,
+      "base": 473,
+      "tax": 47
+    },
+    {
+      "rate": 8,
+      "base": 323,
+      "tax": 25
+    }
+  ]
+}

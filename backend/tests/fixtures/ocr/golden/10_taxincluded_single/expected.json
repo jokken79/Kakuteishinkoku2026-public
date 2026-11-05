@@ -1,0 +1,14 @@
+{
+  "date": "2025-10-05",
+  "vendor": "スターバックス 丸の内店",
+  "total": 480,
+  "registration_number": "T6100000000001",
+  "is_qualified_invoice": true,
+  "tax_lines": [
+    {
+      "rate": 10,
+      "base": 437,
+      "tax": 43
+    }
+  ]
+}

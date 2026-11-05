@@ -1,0 +1,80 @@
+{
+  "year": 2025,
+  "era": "令和7",
+  "kiso_kojo": [
+    { "max_income": 1320000, "amount": 950000 },
+    { "max_income": 3360000, "amount": 880000, "temporary": true },
+    { "max_income": 4890000, "amount": 680000, "temporary": true },
+    { "max_income": 6550000, "amount": 630000, "temporary": true },
+    { "max_income": 23500000, "amount": 580000 },
+    { "max_income": 24000000, "amount": 480000 },
+    { "max_income": 24500000, "amount": 320000 },
+    { "max_income": 25000000, "amount": 160000 },
+    { "max_income": null, "amount": 0 }
+  ],
+  "income_tax_brackets": [
+    { "max": 1949000, "rate": 0.05, "deduction": 0 },
+    { "max": 3299000, "rate": 0.1, "deduction": 97500 },
+    { "max": 6949000, "rate": 0.2, "deduction": 427500 },
+    { "max": 8999000, "rate": 0.23, "deduction": 636000 },
+    { "max": 17999000, "rate": 0.33, "deduction": 1536000 },
+    { "max": 39999000, "rate": 0.4, "deduction": 2796000 },
+    { "max": null, "rate": 0.45, "deduction": 4796000 }
+  ],
+  "reconstruction_tax_rate": 0.021,
+  "salary_deduction_min": 650000,
+  "dependent_income_threshold": 580000,
+  "aoiro_special_deduction": {
+    "double_entry_etax": 650000,
+    "double_entry_paper": 550000,
+    "simple": 100000
+  },
+  "consumption_tokurei_rate": 0.2,
+  "consumption": {
+    "standard_rate": 10,
+    "reduced_rate": 8,
+    "national_rate_standard": 7.8,
+    "national_rate_reduced": 6.24,
+    "local_tax_ratio_num": 22,
+    "local_tax_ratio_den": 78,
+    "deemed_purchase_rates": {
+      "1": 0.9,
+      "2": 0.8,
+      "3": 0.7,
+      "4": 0.6,
+      "5": 0.5,
+      "6": 0.4
+    },
+    "tokurei_2wari_rate": 0.2,
+    "tokurei_3wari_rate": 0.3,
+    "tokurei_2wari_until": "2026-09-30"
+  },
+  "deductions": {
+    "jishin_hoken_max": 50000,
+    "seimei_hoken_max": 120000,
+    "iryohi_floor": 100000,
+    "furusato_floor": 2000
+  },
+  "resident_tax": {
+    "kiso_kojo": 430000,
+    "shotokuwari_prefectural_rate": 0.04,
+    "shotokuwari_municipal_rate": 0.06,
+    "kintowari_prefectural": 1500,
+    "kintowari_municipal": 3000,
+    "forest_environment_tax": 1000,
+    "chosei_kojo_basic_diff": 50000,
+    "chosei_kojo_dependent_diff": {
+      "general": 50000,
+      "specific": 180000,
+      "elderly": 100000,
+      "elderly_cohabiting": 130000,
+      "young": 0,
+      "none": 0
+    },
+    "chosei_kojo_low_rate": 0.05,
+    "chosei_kojo_threshold": 2000000,
+    "chosei_kojo_min": 2500,
+    "taxable_rounding": 1000,
+    "source": "津島市 令和7年度: 市民税 所得割6%/均等割3000円, 県民税 所得割4%/均等割1500円(あいち森と緑づくり税500円含む), 森林環境税1000円(国税). 調整控除 人的控除差(基礎5万/一般扶養5万/特定18万/老人別居10万/同居老親13万) は国税庁の固定表. Fuentes: https://www.city.tsushima.lg.jp/kurashi/zeikin/shizei/kojinjyuuminzei/aramashi.html ; https://www.city.suwa.lg.jp/soshiki/4/4918.html"
+  }
+}

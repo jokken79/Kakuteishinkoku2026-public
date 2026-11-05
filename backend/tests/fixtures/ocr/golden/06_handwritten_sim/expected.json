@@ -1,0 +1,14 @@
+{
+  "date": "2024-08-15",
+  "vendor": "株式会社 山本工務店",
+  "total": 55000,
+  "registration_number": null,
+  "is_qualified_invoice": false,
+  "tax_lines": [
+    {
+      "rate": 10,
+      "base": 50000,
+      "tax": 5000
+    }
+  ]
+}

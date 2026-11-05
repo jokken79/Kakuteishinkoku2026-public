@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/*
+ * 確定申告 — "Calma fiscal".
+ * Estetica: papel sumi, sello 印鑑 (hanko), espacio 間 (ma). Sereno, no SaaS.
+ * Tailwind v4: configuracion via @theme (sin tailwind.config.js).
+ */
+@theme {
+  /* --- Paleta "Calma fiscal" --- */
+  --color-paper: #fbfaf7; /* fondo de la app (papel sumi) */
+  --color-surface: #ffffff; /* tarjetas */
+  --color-sumi: #1b2030; /* tinta — texto principal */
+  --color-sumi-soft: #3f4658; /* texto secundario (AA en 11px) */
+  --color-shuiro: #d43f3a; /* ROJO HANKO — solo confirmar/sello */
+  --color-shuiro-deep: #b5302c; /* tinta del sello asentada */
+  --color-seiji: #1f5f54; /* celadon — valido / alta confianza (AA text) */
+  --color-seiji-soft: #e8f2ee; /* fondo celadon tenue */
+  --color-kohaku: #8a560c; /* ambar — revisar / baja confianza (AA text) */
+  --color-kohaku-soft: #f7eedd; /* fondo ambar tenue */
+  --color-hairline: #ece8e0; /* bordes finos */
+  --color-paper-sink: #f3f0e9; /* hover / superficie hundida */
+
+  /* --- Tipografia --- */
+  --font-sans:
+    "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Noto Sans JP",
+    "Yu Gothic", system-ui, sans-serif;
+  --font-mono:
+    "Geist Mono", "JetBrains Mono", "Space Mono", "Roboto Mono",
+    ui-monospace, "SFMono-Regular", monospace;
+
+  /* --- Radios suaves y consistentes (papel, no material) --- */
+  --radius-card: 14px;
+  --radius-pill: 999px;
+
+  /* --- Sombras casi imperceptibles --- */
+  --shadow-paper: 0 1px 2px rgba(27, 32, 48, 0.04);
+  --shadow-lift: 0 6px 20px -8px rgba(27, 32, 48, 0.12);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-paper);
+  color: var(--color-sumi);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numeros y montos: mono tabular — los ¥ son protagonistas. */
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
+}
+
+/* Foco visible por teclado, sereno pero claro. */
+:focus-visible {
+  outline: 2px solid var(--color-seiji);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Scrollbar discreta (papel). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-hairline) transparent;
+}
+
+/* Respeto a usuarios que reducen movimiento: el sello se vuelve instantaneo. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Tinta del sello al asentar (textura sutil del 印). */
+.hanko-ink {
+  background: radial-gradient(
+    circle at 50% 42%,
+    var(--color-shuiro) 0%,
+    var(--color-shuiro-deep) 78%,
+    var(--color-shuiro-deep) 100%
+  );
+}

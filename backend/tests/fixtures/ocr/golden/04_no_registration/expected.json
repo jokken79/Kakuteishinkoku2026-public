@@ -1,0 +1,14 @@
+{
+  "date": "2025-09-20",
+  "vendor": "個人商店 田中屋",
+  "total": 1400,
+  "registration_number": null,
+  "is_qualified_invoice": false,
+  "tax_lines": [
+    {
+      "rate": 8,
+      "base": 1296,
+      "tax": 104
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "date": "2025-06-01",
+  "vendor": "雑貨店 ABC",
+  "total": 1000,
+  "registration_number": "T0234567890123",
+  "is_qualified_invoice": false,
+  "tax_lines": [
+    {
+      "rate": 10,
+      "base": 909,
+      "tax": 91
+    }
+  ]
+}

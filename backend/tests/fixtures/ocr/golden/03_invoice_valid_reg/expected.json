@@ -1,0 +1,14 @@
+{
+  "date": "2025-12-01",
+  "vendor": "カフェ・ド・パリ",
+  "total": 495,
+  "registration_number": "T6100000000001",
+  "is_qualified_invoice": true,
+  "tax_lines": [
+    {
+      "rate": 10,
+      "base": 450,
+      "tax": 45
+    }
+  ]
+}

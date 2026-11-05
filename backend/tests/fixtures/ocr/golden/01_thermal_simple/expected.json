@@ -1,0 +1,14 @@
+{
+  "date": "2025-11-15",
+  "vendor": "ローソン 渋谷店",
+  "total": 280,
+  "registration_number": null,
+  "is_qualified_invoice": false,
+  "tax_lines": [
+    {
+      "rate": 8,
+      "base": 260,
+      "tax": 20
+    }
+  ]
+}

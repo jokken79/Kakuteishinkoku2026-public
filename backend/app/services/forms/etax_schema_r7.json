@@ -1,0 +1,311 @@
+{
+  "_source": "NTA 帳票フィールド仕様書(所得-申告)Ver23x.xlsx + XML構造設計書(所得-申告)Ver23x.xlsx",
+  "_version": "23.0",
+  "_fiscal_year": "令和7 (2025)",
+  "_extracted": "2026-06-21",
+  "_notes": [
+    "KOA020 es la única 様式 activa en Ver22x y Ver23x — cubre 第一表・第二表 y formularios opcionales de pérdidas.",
+    "KOA210 (青色申告決算書一般用) desapareció del esquema XML a partir de Ver12x.",
+    "La 決算書 se envía por CSV separado (SHIFT-JIS); no tiene 様式ID propio en e-Tax XML desde ~2017.",
+    "Namespace: shotoku. El sobre raíz en el XML es el elemento KOA020 con atributos VR, softNM, sakuseiNM, sakuseiDay.",
+    "Los montos (kingaku) van SIN separadores de miles en el XML — enteros puros.",
+    "Las fechas usan elemento de kubun (1-5 para era) + elemento numérico para año (2 dígitos), mes, día.",
+    "令和7 = era kubun 5, año 7.",
+    "La 利用者識別番号 se transmite fuera del cuerpo del documento en el protocolo de envío e-Tax (no es un campo de la 帳票); el campo del formulario es el マイナンバー (ABA00125).",
+    "Campos marcados con null: no encontrados con certeza en los Excel; NO inventar valores."
+  ],
+  "envelope": {
+    "root_tag": "KOA020",
+    "namespace": "shotoku",
+    "attributes": {
+      "VR": "número de versión (ej: 23.0)",
+      "softNM": "nombre del software creador",
+      "sakuseiNM": "nombre del operador",
+      "sakuseiDay": "fecha de creación"
+    },
+    "sub_pages": {
+      "KOA020-1": "申告書第一表 (page=KOA020-1)",
+      "KOA020-2_note": "La segunda página (第二表) comparte la misma 様式 KOA020 con tags ABC*, ABD*, ABE*, ABI* etc."
+    },
+    "hierarchy_root": {
+      "level_03": "KOA020 (raíz del 帳票)",
+      "level_04": "KOA020-1 (申告書第一表)",
+      "level_05_header": "ABA00000 (申告書見出し部)",
+      "level_05_body": "ABB00000 (申告内容第一表)"
+    }
+  },
+  "riyousha_id": {
+    "field_in_form": "ABA00125",
+    "label": "個人番号（マイナンバー）",
+    "format": "bango (string 12 digits: 999999999999)",
+    "notes": [
+      "Este es el マイナンバー del contribuyente, no la 利用者識別番号.",
+      "La 利用者識別番号 (16 dígitos) va en el protocolo de transmisión e-Tax (sobre electrónico), NO en el cuerpo XML del formulario.",
+      "Obligatorio cuando 口座情報提供同意区分 (ABZ00000) = 1."
+    ]
+  },
+  "forms": {
+    "shinkokusho_dai1_dai2": {
+      "tetsuzuki_id": "KOA020",
+      "version": "23.0",
+      "name": "年分の所得税及び復興特別所得税の申告書(第一表・第二表)",
+      "namespace": "shotoku",
+      "header_fields": {
+        "年分(元号)": "ABA00010",
+        "年分(年)": "ABA00010",
+        "申告の種類": "ABA00020",
+        "税務署名": "ABA00030",
+        "提出年月日": "ABA00040",
+        "納税地区分": "ABA00070",
+        "郵便番号": "ABA00080",
+        "住所(上段)": "ABA00090",
+        "住所(下段)": "ABA00095",
+        "マイナンバー": "ABA00125",
+        "フリガナ": "ABA00130",
+        "氏名": "ABA00140",
+        "職業": "ABA00160",
+        "屋号・雅号": "ABA00170",
+        "生年月日": "ABA00200",
+        "電話番号": "ABA00220",
+        "青色区分": "ABA00240"
+      },
+      "fields": {
+        "収入金額等": {
+          "事業：営業等(区分)": "ABB00025",
+          "事業：営業等(金額)": "ABB00030",
+          "事業：農業(区分)": "ABB00035",
+          "事業：農業(金額)": "ABB00040",
+          "不動産(金額)": "ABB00050",
+          "配当": "ABB00070",
+          "給与(区分)": "ABB00075",
+          "給与(金額)": "ABB00080",
+          "雑：公的年金等": "ABB00100",
+          "雑：業務(区分)": "ABB00103",
+          "雑：業務(金額)": "ABB00105",
+          "雑：その他(区分)": "ABB00107",
+          "雑：その他(金額)": "ABB00110",
+          "総合譲渡：短期": "ABB00130",
+          "総合譲渡：長期": "ABB00180",
+          "一時": "ABB00230"
+        },
+        "所得金額等": {
+          "事業：営業等(所得)": "ABB00300",
+          "事業：農業(所得)": "ABB00320",
+          "不動産(所得)": "ABB00340",
+          "利子": "ABB00350",
+          "配当(所得)": "ABB00360",
+          "給与(区分)": "ABB00365",
+          "給与(所得)": "ABB00370",
+          "雑：公的年金等(所得)": "ABB01060",
+          "雑：業務(所得)": "ABB01090",
+          "雑：その他(所得)": "ABB01120",
+          "雑：計(所得)": "ABB01130",
+          "総合譲渡・一時(所得)": "ABB00400",
+          "合計(所得金額)": "ABB00410"
+        },
+        "所得控除": {
+          "雑損控除": "ABB00430",
+          "医療費控除(区分)": "ABB00435",
+          "医療費控除(控除額)": "ABB00440",
+          "社会保険料控除": "ABB00450",
+          "小規模企業共済等掛金控除": "ABB00460",
+          "生命保険料控除": "ABB00470",
+          "地震保険料控除": "ABB00480",
+          "寄附金控除": "ABB00490",
+          "寡婦・ひとり親控除(区分)": "ABB00495",
+          "寡婦・ひとり親控除(控除額)": "ABB00500",
+          "勤労学生・障害者控除": "ABB00510",
+          "配偶者(特別)控除(区分1)": "ABB00515",
+          "配偶者(特別)控除(区分2)": "ABB00517",
+          "配偶者(特別)控除(控除額)": "ABB00520",
+          "扶養控除(区分)": "ABB00535",
+          "扶養控除(控除額)": "ABB00540",
+          "特定親族特別控除(区分)": "ABB00544",
+          "特定親族特別控除(人数)": "ABB00546",
+          "特定親族特別控除(控除額)": "ABB00548",
+          "基礎控除": "ABB00550",
+          "所得控除小計(13〜25)": "ABB00555",
+          "所得控除合計(30)": "ABB00560"
+        },
+        "税額計算": {
+          "課税される所得金額(31)": "ABB00580",
+          "上の31に対する税額(32)": "ABB00590",
+          "配当控除(33)": "ABB00600",
+          "その他の税額控除(控除額)(34)": "ABB00640",
+          "住宅借入金等特別控除(区分1)": "ABB00645",
+          "住宅借入金等特別控除(区分2)": "ABB00647",
+          "住宅借入金等特別控除(控除額)(35)": "ABB00650",
+          "差引所得税額(42)": "ABB00670",
+          "災害減免額(43)": "ABB00680",
+          "再差引所得税額(44)": "ABB01010",
+          "復興特別所得税額(45)": "ABB01020",
+          "所得税等の額(46)": "ABB01030",
+          "外国税額控除等(47〜48)": "ABB01040",
+          "源泉徴収税額(49)": "ABB00710",
+          "申告納税額(50)": "ABB00720",
+          "予定納税額(51)": "ABB00730",
+          "第3期分の税額：納める税金(52)": "ABB00750",
+          "第3期分の税額：還付される税金(53)": "ABB00760"
+        },
+        "その他": {
+          "青色申告特別控除額(59)": "ABB00800",
+          "専従者給与合計額(58)": "ABB00790"
+        },
+        "第二表_所得の内訳": {
+          "所得の種類": "ABD00020",
+          "種目": "ABD00025",
+          "支払者の法人番号または所在地": "ABD00030",
+          "支払者の名称": "ABD00040",
+          "収入金額": "ABD00050",
+          "源泉徴収税額": "ABD00060",
+          "源泉徴収税額の合計額": "ABD00070"
+        },
+        "第二表_住民税": {
+          "給与・公的年金等以外の住民税の徴収方法": "ABI00010",
+          "非上場株式の少額配当等": "ABI00090",
+          "配当割額控除額": "ABI00104",
+          "株式等譲渡所得割額控除額": "ABI00106",
+          "都道府県・市区町村への寄附(ふるさと納税特例)": "ABI00240",
+          "共同募金・日赤その他の寄附": "ABI00250"
+        },
+        "通知・同意": {
+          "口座情報提供同意区分": "ABZ00000",
+          "口座情報利用同意区分": "ABZ40000",
+          "通知希望区分(加算税)": "ABZ10000",
+          "通知希望区分(予定納税)": "ABZ20000",
+          "通知希望区分(還付金振込)": "ABZ30000"
+        }
+      },
+      "confirmed_tag_examples": {
+        "合計所得金額 (casilla 12 の合計)": "ABB00410",
+        "申告納税額 (casilla 50)": "ABB00720",
+        "社会保険料控除 (casilla 13)": "ABB00450",
+        "基礎控除 (casilla 25)": "ABB00550",
+        "扶養控除 (casilla 23)": "ABB00540",
+        "所得控除合計 (casilla 30)": "ABB00560",
+        "課税される所得金額 (casilla 31)": "ABB00580",
+        "復興特別所得税 (casilla 45)": "ABB01020",
+        "源泉徴収税額 (casilla 49)": "ABB00710",
+        "還付される税金 (casilla 53)": "ABB00760",
+        "納める税金 (casilla 52)": "ABB00750",
+        "事業(営業等)所得 (casilla 1)": "ABB00300",
+        "事業(営業等)収入 (casilla ア)": "ABB00030",
+        "雑：公的年金等 (所得金額欄7)": "ABB01060",
+        "住宅借入金等特別控除 (casilla 35)": "ABB00650",
+        "基礎控除 R7 (max 950000 si R7+)": "ABB00550"
+      }
+    },
+    "shinkokusho_dai2": {
+      "_note": "La 第二表 no es un 様式 separado — está incluida en KOA020.",
+      "tags_prefix": "ABC (見出し), ABD (所得内訳), ABE (事業専従者), ABI (住民税), ABY (配偶者・親族)",
+      "tetsuzuki_id": "KOA020 (mismo que 第一表)"
+    },
+    "kessansho_ippan": {
+      "tetsuzuki_id": null,
+      "version_last_seen": "Ver11x (11.0)",
+      "last_version_xml_id": "KOA210",
+      "name": "年分青色申告決算書(一般用)",
+      "status": "RETIRADA del esquema XML e-Tax (desapareció en Ver12x, ~2017). En la actualidad NO tiene 様式ID en el envío XML.",
+      "current_transmission_method": "CSV separado en SHIFT-JIS (conforme al CSV入力規則 del NTA). Ver build_kessansho_csv() en etax_export.py.",
+      "_warning": "NO intentar construir un bloque XML KOA210 para e-Tax actual — el validador del NTA lo rechazará. El flujo correcto es: .xtx (申告書 KOA020) + archivo CSV separado (決算書).",
+      "fields_from_ver11x_for_reference": {
+        "売上(収入)金額 (casilla 1)": "AMF00100",
+        "期首商品棚卸高 (casilla 2)": "AMF00120",
+        "仕入金額 (casilla 3)": "AMF00130",
+        "差引原価 (casilla 6)": "AMF00160",
+        "差引金額1 (casilla 7)": "AMF00170",
+        "租税公課 (casilla 8)": "AMF00190",
+        "荷造運賃 (casilla 9)": "AMF00200",
+        "水道光熱費 (casilla 10)": "AMF00210",
+        "旅費交通費 (casilla 11)": "AMF00220",
+        "通信費 (casilla 12)": "AMF00230",
+        "広告宣伝費 (casilla 13)": "AMF00240",
+        "接待交際費 (casilla 14)": "AMF00250",
+        "損害保険料 (casilla 15)": "AMF00260",
+        "修繕費 (casilla 16)": "AMF00270",
+        "消耗品費 (casilla 17)": "AMF00280",
+        "減価償却費 (casilla 18)": "AMF00290",
+        "福利厚生費 (casilla 19)": "AMF00300",
+        "給料賃金 (casilla 20)": "AMF00310",
+        "外注工賃 (casilla 21)": "AMF00320",
+        "利子割引料 (casilla 22)": "AMF00330",
+        "地代家賃 (casilla 23)": "AMF00340",
+        "貸倒金 (casilla 24)": "AMF00350",
+        "雑費 (casilla 31)": "AMF00370",
+        "経費計 (casilla 32)": "AMF00380",
+        "差引金額2 (casilla 33)": "AMF00390",
+        "専従者給与 (casilla 38)": "AMF00460",
+        "青色申告特別控除前の所得金額 (casilla 43)": "AMF00500",
+        "青色申告特別控除額 (casilla 44)": "AMF00510",
+        "所得金額 (casilla 45)": "AMF00530"
+      }
+    }
+  },
+  "formats": {
+    "montos": {
+      "type": "entero sin separadores de miles",
+      "example": "1500000 (no 1,500,000)",
+      "xml_type": "kingaku",
+      "redondeo_notas": {
+        "基礎控除": "万円未満切捨て (desde R7 hasta 950,000)",
+        "課税所得": "千円未満切捨て",
+        "第3期分の税額：納める税金": "百円未満切捨て",
+        "申告納税額": "百円未満切捨て (positivo); negativo = 還付",
+        "住宅借入金等特別控除": "百円未満切捨て"
+      }
+    },
+    "fechas": {
+      "era_kubun": {
+        "1": "明治",
+        "2": "大正",
+        "3": "昭和",
+        "4": "平成",
+        "5": "令和"
+      },
+      "year_format": "2 dígitos (ZZ), ej: 7 para 令和7",
+      "example_reiwa7": "era=5, year=07, month=MM, day=DD",
+      "xml_type": "yymmdd (tipo común) o yy (solo año)"
+    },
+    "kubun_shinkoku": {
+      "1": "確定申告",
+      "2": "修正申告",
+      "3": "準確定申告",
+      "4": "準確定修正申告"
+    },
+    "青色区分": {
+      "ABA00240": "1=該当 (青色申告者), 2=非該当"
+    },
+    "基礎控除_r7": {
+      "nota": "Desde 令和7 (era=5, year=7+): 0≦x≦950,000 (subió de 480,000). Hasta R6: 0≦x≦480,000. Hasta R元: 380,000 fijo.",
+      "tag": "ABB00550"
+    }
+  },
+  "gaps": [
+    {
+      "campo": "利用者識別番号の位置",
+      "estado": "ACLARADO: va en el sobre de transmisión e-Tax (protocolo), no en el XML del 帳票. El campo del formulario es マイナンバー (ABA00125).",
+      "accion": "No requiere cambio en el XML del 帳票."
+    },
+    {
+      "campo": "青色申告決算書のXML tags en versión actual",
+      "estado": "GAP CONFIRMADO: KOA210 retirado en Ver12x. Sin 様式ID en e-Tax XML actual.",
+      "accion": "Usar CSV separado. Los AMF0xxxx son solo referencia histórica."
+    },
+    {
+      "campo": "貸借対照表 (Balance Sheet) tags",
+      "estado": "null — no encontrado en los Excel de (申告). La BS es parte de la 決算書 que ya no tiene XML.",
+      "accion": "Continuar con CSV para BS también."
+    },
+    {
+      "campo": "Sobre XML completo (namespaces, atributos de transmisión, firma electrónica)",
+      "estado": "null — el esquema de transmisión completo requiere registro de desarrollador en el NTA o un .xtx de muestra real.",
+      "accion": "Solicitar al usuario un archivo .xtx generado por el 作成コーナー para cerrar este gap."
+    },
+    {
+      "campo": "ABB00410 vs ABB01060 para 合計所得金額",
+      "estado": "ACLARADO: ABB00410 = 合計(所得金額等) casilla 12 (suma de todos los ingresos). ABB01060 = 雑：公的年金等 (所得金額, casilla 7 dentro de 雑). La hipótesis inicial de ABB01060=合計所得金額 era INCORRECTA.",
+      "tag_correcto_合計所得金額": "ABB00410",
+      "tag_correcto_年金所得": "ABB01060"
+    }
+  ]
+}

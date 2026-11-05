@@ -1,0 +1,93 @@
+[project]
+name = "kakuteishinkoku-backend"
+version = "0.1.0"
+description = "Backend FastAPI para la app de 確定申告 2026 (declaracion de impuestos JP)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.14.2",
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14.0",
+    "psycopg2-binary>=2.9.10",
+    "python-multipart>=0.0.12",
+    "reportlab>=4.0.0",
+    # Merge de la capa de valores sobre el 様式 oficial del NTA (overlay PDF).
+    # Pure-python, sin binarios (portable a Docker/Linux).
+    "pypdf>=5.0",
+    # Extracción de texto de los PDFs de 確定申告 históricos (過去の申告). Import
+    # lazy en app/services/past_filings/extractor.py: si falta, degrada con
+    # gracia (archiva el PDF sin extraer montos).
+    "pymupdf>=1.24.0",
+    # IANA tz database (zoneinfo) para el reset de cuota en zona US/Pacific.
+    # Windows no trae la base de datos del sistema, por eso es dependencia.
+    "tzdata>=2024.1",
+    # Requerida por pypdf para leer los 様式 oficiales del NTA (PDF cifrados con
+    # AES) al hacer el overlay. Sin ella, render_overlay lanza DependencyError.
+    "cryptography>=3.1",
+    "defusedxml>=0.7.1",
+    # Firma de la cookie de sesion del login con Google (app/services/auth.py).
+    # Es la misma libreria que usa Starlette para sus sesiones firmadas.
+    "itsdangerous>=2.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.27.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+# Preproceso de imagen para el OCR (deskew/CLAHE/denoise/binarizacion/upscale).
+# Wheels disponibles en Python 3.12-3.14. Import lazy: si falta, el pipeline
+# degrada con gracia (usa la imagen original). Ver app/services/ocr/preprocess.py.
+ocr-preprocess = [
+    "opencv-python-headless>=4.10",
+    "pillow>=10.0",
+    "numpy>=1.26",
+]
+# Providers cloud LLM (structured output). Cada uno con import lazy.
+ocr-gemini = [
+    "google-genai>=0.3.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+# Los 様式 oficiales del NTA (PDF en blanco) y los parámetros fiscales por año
+# se empaquetan con el código (necesarios en runtime para el overlay y el cálculo).
+"app.services.forms" = ["templates/*.pdf", "*.json"]
+"app.services.ocr" = ["*.ps1"]
+"app.tax_rules" = ["*.json"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Las migraciones de Alembic son codigo autogenerado: no se lintean.
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# B008: `Depends()`/`File()`/`Form()` en defaults es el patron idiomatico de
+# FastAPI para inyeccion de dependencias; no es un defecto.
+"app/api/*.py" = ["B008"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,806 @@
+{
+  "version": "2026-06-21",
+  "source": "https://www.e-tax.nta.go.jp/shiyo/download/kojoall.CAB",
+  "source_page": "https://www.e-tax.nta.go.jp/shiyo/shiyo-kojo3.htm",
+  "notes": "XSD oficiales extraídos de kojoall.CAB. Namespace compartido para todos los tipos: http://xml.e-tax.nta.go.jp/XSD/kyotsu. Todos los documentos llevan firma digital XML-DSIG (dsig:Signature requerida). Los campos de año 'gen:yyyy' son año occidental (西暦 4 dígitos). Los campos de año 'gen:yy' son era japonesa (元号): era 1=明治,2=大正,3=昭和,4=平成,5=令和 + yy 1-99. Los montos 'gen:kingaku' son enteros largos (xsd:long), sin decimales, en yenes.",
+  "common_types": {
+    "gen:kingaku": {
+      "base_type": "xsd:long",
+      "format": "integer",
+      "unit": "JPY",
+      "notes": "Entero largo, sin decimales. Patrón: [-]?\\d{1-15}. No incluye decimales (gaika/外貨 para moneda extranjera usa xsd:decimal separado)."
+    },
+    "gen:yyyy": {
+      "base_type": "xsd:nonNegativeInteger",
+      "format": "western_4digit",
+      "notes": "Año en 西暦 (gregoriano). Elemento: <yyyy>2024</yyyy>. Min: 1, Max: 9999."
+    },
+    "gen:yy": {
+      "base_type": "complex (era + yy)",
+      "format": "wareki",
+      "notes": "Año en era japonesa. Estructura: <era>5</era><yy>6</yy> = 令和6年 = 2024. era: 1=明治, 2=大正, 3=昭和, 4=平成, 5=令和."
+    },
+    "gen:yyyymmdd": {
+      "base_type": "complex",
+      "format": "western_date",
+      "notes": "Fecha 西暦. Estructura: <yyyy/><mm/><dd/>."
+    },
+    "gen:yymmdd": {
+      "base_type": "complex",
+      "format": "wareki_date",
+      "notes": "Fecha en era japonesa. Estructura: <era/><yy/><mm/><dd/>."
+    },
+    "gen:kubun": {
+      "base_type": "complex",
+      "format": "code+name",
+      "notes": "Par código-nombre. <kubun_CD> entero 1 dígito, <kubun_NM> string opcional max 30 chars."
+    }
+  },
+  "types": {
+    "seimei_hoken": {
+      "label": "生命保険料控除証明書",
+      "xsd_file": "TEG800-001.xsd",
+      "schema_version": "1.1",
+      "schema_date": "2020-08-31",
+      "root_element": "TEG800",
+      "namespace": "http://xml.e-tax.nta.go.jp/XSD/kyotsu",
+      "version_attribute": "VR",
+      "version_values": ["1.0", "1.1"],
+      "max_detail_rows": 100,
+      "fields": {
+        "insurance_company_name": {
+          "xpath": "TEG800/WCA00000",
+          "type": "gen:name",
+          "required": true,
+          "notes": "保険会社名. Tipo gen:name (string sin maxLength explícito en este campo)."
+        },
+        "corporate_number": {
+          "xpath": "TEG800/WCB00000",
+          "type": "gen:bango",
+          "required": false,
+          "notes": "法人番号. Estructura gen:bango: choice entre kojinbango (12 dígitos) o hojinbango (13 dígitos)."
+        },
+        "certificate_date": {
+          "xpath": "TEG800/WCC00000",
+          "type": "gen:yyyymmdd",
+          "required": true,
+          "notes": "証明日. Fecha en 西暦."
+        },
+        "contractor_name": {
+          "xpath": "TEG800/WCD00000",
+          "type": "string",
+          "max_length": 100,
+          "required": true,
+          "notes": "契約者名."
+        },
+        "detail_rows": {
+          "xpath": "TEG800/WCE00000",
+          "type": "repeating",
+          "max_occurrences": 100,
+          "notes": "明細 繰り返し. Cada fila WCE00000 contiene los campos de detalle por póliza.",
+          "children": {
+            "certificate_year": {
+              "xpath": "WCE00010",
+              "type": "gen:yyyy",
+              "format": "western_4digit",
+              "required": true,
+              "notes": "証明年. Año 西暦 4 dígitos."
+            },
+            "title": {
+              "xpath": "WCE00020",
+              "type": "string",
+              "max_length": 35,
+              "required": true,
+              "notes": "題 (título/descripción de la póliza). Max 35 chars."
+            },
+            "applicable_system": {
+              "xpath": "WCE00030",
+              "type": "gen:kubun",
+              "required": true,
+              "values": {
+                "1": "新制度",
+                "2": "旧制度",
+                "3": "両方"
+              },
+              "notes": "適用制度 (新/旧区分). kubun_CD: 1=新制度, 2=旧制度, 3=両方."
+            },
+            "policy_number": {
+              "xpath": "WCE00040",
+              "type": "string",
+              "max_length": 30,
+              "required": true,
+              "notes": "証券番号."
+            },
+            "insurance_type": {
+              "xpath": "WCE00050",
+              "type": "string",
+              "max_length": 30,
+              "required": false,
+              "notes": "保険種類 (e.g. 終身保険, 定期保険, 医療保険, etc.)."
+            },
+            "certified_amount_block": {
+              "xpath": "WCE00190",
+              "required": false,
+              "notes": "証明額ブロック. Contiene subgrupos 旧制度 y 新制度, cada uno con subcategorías.",
+              "children": {
+                "old_system": {
+                  "xpath": "WCE00220",
+                  "required": false,
+                  "notes": "旧制度ブロック.",
+                  "children": {
+                    "general_ippan_premium": {
+                      "xpath": "WCE00220/WCE00230/WCE00240",
+                      "type": "gen:kingaku",
+                      "format": "integer",
+                      "required": false,
+                      "notes": "旧制度一般 保険料."
+                    },
+                    "general_ippan_dividend": {
+                      "xpath": "WCE00220/WCE00230/WCE00250",
+                      "type": "gen:kingaku",
+                      "required": false,
+                      "notes": "旧制度一般 配当金."
+                    },
+                    "general_ippan_net": {
+                      "xpath": "WCE00220/WCE00230/WCE00260",
+                      "type": "gen:kingaku",
+                      "required": false,
+                      "notes": "旧制度一般 差引保険料等合計額 (monto neto para declarar)."
+                    },
+                    "nenkin_premium": {
+                      "xpath": "WCE00220/WCE00270/WCE00280",
+                      "type": "gen:kingaku",
+                      "required": false,
+                      "notes": "旧制度年金 保険料."
+                    },
+                    "nenkin_net": {
+                      "xpath": "WCE00220/WCE00270/WCE00300",
+                      "type": "gen:kingaku",
+                      "required": false,
+                      "notes": "旧制度年金 差引保険料等合計額."
+                    }
+                  }
+                },
+                "new_system": {
+                  "xpath": "WCE00310",
+                  "required": false,
+                  "notes": "新制度ブロック. Tres subcategorías: 一般, 介護医療, 年金.",
+                  "children": {
+                    "general_ippan_net": {
+                      "xpath": "WCE00310/WCE00320/WCE00350",
+                      "type": "gen:kingaku",
+                      "required": false,
+                      "notes": "新制度一般 差引保険料等合計額."
+                    },
+                    "kaigo_iryo_net": {
+                      "xpath": "WCE00310/WCE00360/WCE00390",
+                      "type": "gen:kingaku",
+                      "required": false,
+                      "notes": "新制度介護医療 差引保険料等合計額."
+                    },
+                    "nenkin_net": {
+                      "xpath": "WCE00310/WCE00400/WCE00430",
+                      "type": "gen:kingaku",
+                      "required": false,
+                      "notes": "新制度年金 差引保険料等合計額."
+                    }
+                  }
+                }
+              }
+            },
+            "estimated_december_amount": {
+              "xpath": "WCE00440",
+              "required": false,
+              "notes": "証明額（12月期想定）ブロック. Mismo subárbol que WCE00190 pero son montos 参考 (申告額参考). Usar cuando el pago no cubre el año completo."
+            }
+          }
+        }
+      },
+      "deduction_categories": {
+        "notes": "Las categorías de deducción para 生命保険料控除 en 確定申告 son: 一般生命 (旧+新), 介護医療 (新のみ), 個人年金 (旧+新). El XSD no agrupa por deduction_category directamente — el parser debe inferirlo del applicable_system + nombre del bloque.",
+        "old_system_categories": ["一般", "年金"],
+        "new_system_categories": ["一般", "介護医療", "年金"]
+      }
+    },
+    "jishin_hoken": {
+      "label": "地震保険料控除証明書",
+      "xsd_file": "TEG810-001.xsd",
+      "schema_version": "1.1",
+      "schema_date": "2022-08-30",
+      "root_element": "TEG810",
+      "namespace": "http://xml.e-tax.nta.go.jp/XSD/kyotsu",
+      "version_attribute": "VR",
+      "version_values": ["1.0", "1.1"],
+      "max_detail_rows": 100,
+      "fields": {
+        "insurance_company_name": {
+          "xpath": "TEG810/WDA00000",
+          "type": "gen:name",
+          "required": true,
+          "notes": "保険会社名."
+        },
+        "corporate_number": {
+          "xpath": "TEG810/WDB00000",
+          "type": "gen:bango",
+          "required": false,
+          "notes": "法人番号."
+        },
+        "certificate_date": {
+          "xpath": "TEG810/WDC00000",
+          "type": "gen:yyyymmdd",
+          "required": true,
+          "notes": "証明日. Fecha 西暦."
+        },
+        "contractor_name": {
+          "xpath": "TEG810/WDD00000",
+          "type": "string",
+          "max_length": 100,
+          "required": true,
+          "notes": "契約者名."
+        },
+        "detail_rows": {
+          "xpath": "TEG810/WDE00000",
+          "type": "repeating",
+          "max_occurrences": 100,
+          "notes": "明細 繰り返し por póliza.",
+          "children": {
+            "certificate_year": {
+              "xpath": "WDE00010",
+              "type": "gen:yyyy",
+              "format": "western_4digit",
+              "required": false,
+              "notes": "証明年. Año 西暦."
+            },
+            "applicable_premium_type": {
+              "xpath": "WDE00020",
+              "type": "gen:kubun",
+              "required": true,
+              "values": {
+                "1": "地震保険料",
+                "2": "旧長期損害保険料（満期返戻金あり）",
+                "3": "旧長期損害保険料（満期返戻金なし）"
+              },
+              "notes": "保険料控除の対象となる保険料の種類. kubun_CD 1-3."
+            },
+            "policy_number": {
+              "xpath": "WDE00030/WDE00040",
+              "type": "string",
+              "max_length": 30,
+              "required": true,
+              "notes": "証券番号."
+            },
+            "insured_object": {
+              "xpath": "WDE00070",
+              "type": "gen:kubun",
+              "required": true,
+              "values": {
+                "1": "建物",
+                "2": "家財",
+                "3": "建物及び家財",
+                "4": "その他"
+              },
+              "notes": "保険の対象 (objeto asegurado)."
+            },
+            "earthquake_insurance_amount": {
+              "xpath": "WDE00160/WDE00170",
+              "type": "gen:kingaku",
+              "format": "integer",
+              "required": false,
+              "notes": "地震保険料 (monto de prima de terremoto)."
+            },
+            "earthquake_deductible_amount": {
+              "xpath": "WDE00160/WDE00180",
+              "type": "gen:kingaku",
+              "format": "integer",
+              "required": false,
+              "notes": "地震保険 控除対象保険料 (monto deducible de la prima de terremoto)."
+            },
+            "old_longterm_insurance_amount": {
+              "xpath": "WDE00190/WDE00200",
+              "type": "gen:kingaku",
+              "format": "integer",
+              "required": false,
+              "notes": "旧長期損害保険料 (prima de seguro de daños a largo plazo antiguo)."
+            },
+            "old_longterm_deductible_amount": {
+              "xpath": "WDE00190/WDE00210",
+              "type": "gen:kingaku",
+              "format": "integer",
+              "required": false,
+              "notes": "旧長期損害保険 控除対象保険料."
+            }
+          }
+        }
+      },
+      "notes": "No tiene distinción 新/旧制度 en el mismo sentido que 生命保険. La distinción es 地震保険 vs 旧長期損害保険 (contratos anteriores a 2007). Cada uno tiene su propio límite de deducción."
+    },
+    "furusato_nozei_single": {
+      "label": "寄附金受領証明書（単体）",
+      "xsd_file": "TEG820-001.xsd",
+      "schema_version": "1.0",
+      "schema_date": "2018-02-06",
+      "root_element": "TEG820",
+      "namespace": "http://xml.e-tax.nta.go.jp/XSD/kyotsu",
+      "version_attribute": "VR",
+      "version_values": ["1.0"],
+      "max_detail_rows": 100,
+      "notes": "Certificado de recepción de donación — un certificado por organismo donado. Para furusato nozei y similares. Versión anterior a TEG821/TEG822.",
+      "fields": {
+        "organization_name": {
+          "xpath": "TEG820/WGA00000",
+          "type": "string",
+          "max_length": 100,
+          "required": true,
+          "notes": "寄附を受けた団体名等."
+        },
+        "organization_address": {
+          "xpath": "TEG820/WGB00000",
+          "type": "gen:address",
+          "required": true,
+          "notes": "寄附を受けた団体の所在地."
+        },
+        "receipt_date": {
+          "xpath": "TEG820/WGC00000",
+          "type": "gen:yyyymmdd",
+          "format": "western_date",
+          "required": true,
+          "notes": "受領年月日."
+        },
+        "donor_name": {
+          "xpath": "TEG820/WGD00000",
+          "type": "string",
+          "max_length": 100,
+          "required": true,
+          "notes": "寄附者の氏名."
+        },
+        "detail_rows": {
+          "xpath": "TEG820/WGE00000",
+          "type": "repeating",
+          "max_occurrences": 100,
+          "children": {
+            "receipt_number": {
+              "xpath": "WGE00010",
+              "type": "string",
+              "max_length": 50,
+              "required": true,
+              "notes": "領収書発行番号."
+            },
+            "donation_type": {
+              "xpath": "WGE00020",
+              "type": "gen:kubun",
+              "required": true,
+              "values": {
+                "1": "国・地方公共団体",
+                "2": "公益社団法人等",
+                "3": "特定公益信託",
+                "4": "政治活動",
+                "5": "認定NPO法人等",
+                "6": "条例指定寄附金",
+                "7": "ふるさと納税（特例対象）",
+                "8": "その他"
+              },
+              "notes": "寄附の種類. kubun_CD 1-8."
+            },
+            "donation_amount": {
+              "xpath": "WGE00040",
+              "type": "gen:kingaku",
+              "format": "integer",
+              "required": true,
+              "notes": "寄附金額. Entero, yenes."
+            }
+          }
+        }
+      }
+    },
+    "furusato_nozei_multi": {
+      "label": "寄附金受領証明書（複数寄附対応）",
+      "xsd_file": "TEG821-001.xsd",
+      "schema_version": "1.1",
+      "schema_date": "2020-07-01",
+      "root_element": "TEG821",
+      "namespace": "http://xml.e-tax.nta.go.jp/XSD/kyotsu",
+      "version_attribute": "VR",
+      "version_values": ["1.0", "1.1"],
+      "max_detail_rows": 100,
+      "notes": "Certificado multi-donación. Un archivo XML agrupa múltiples donaciones al mismo donante. Para uso en ふるさと納税 consolidado.",
+      "fields": {
+        "donor_name": {
+          "xpath": "TEG821/WHA00000",
+          "type": "string",
+          "max_length": 100,
+          "required": true,
+          "notes": "寄附者の氏名."
+        },
+        "detail_rows": {
+          "xpath": "TEG821/WHB00000",
+          "type": "repeating",
+          "max_occurrences": 100,
+          "children": {
+            "receipt_number": {
+              "xpath": "WHB00010",
+              "type": "string",
+              "max_length": 50,
+              "required": true,
+              "notes": "領収書発行番号."
+            },
+            "donation_type": {
+              "xpath": "WHB00020",
+              "type": "gen:kubun2",
+              "required": true,
+              "values": {
+                "1": "国・地方公共団体",
+                "2": "公益社団法人等",
+                "3": "特定公益信託",
+                "4": "政治活動",
+                "5": "認定NPO法人等",
+                "6": "条例指定寄附金",
+                "7": "ふるさと納税（特例対象）",
+                "8": "その他",
+                "9": "コード9",
+                "10": "コード10",
+                "11": "コード11",
+                "12": "コード12",
+                "13": "コード13",
+                "14": "コード14",
+                "15": "コード15",
+                "16": "コード16"
+              },
+              "notes": "寄附の種類. gen:kubun2 (2 dígitos). Códigos 9-16 sin nombre oficial en el XSD."
+            },
+            "donation_amount": {
+              "xpath": "WHB00050",
+              "type": "gen:kingaku",
+              "format": "integer",
+              "required": true,
+              "notes": "寄附金額."
+            },
+            "receipt_date": {
+              "xpath": "WHB00060",
+              "type": "gen:yyyymmdd",
+              "format": "western_date",
+              "required": true,
+              "notes": "受領年月日."
+            },
+            "organization_name": {
+              "xpath": "WHB00070",
+              "type": "string",
+              "max_length": 100,
+              "required": true,
+              "notes": "寄附を受けた団体名等."
+            }
+          }
+        }
+      }
+    },
+    "furusato_nozei_multi_r3": {
+      "label": "寄附金受領証明書（令和3年分以降複数寄附対応）",
+      "xsd_file": "TEG822-001.xsd",
+      "schema_version": "1.0",
+      "schema_date": "2021-04-16",
+      "root_element": "TEG822",
+      "namespace": "http://xml.e-tax.nta.go.jp/XSD/kyotsu",
+      "version_attribute": "VR",
+      "version_values": ["1.0"],
+      "max_detail_rows": 100,
+      "notes": "Versión 令和3年 (2021+) del certificado multi-donación. Agrega campo その他寄附番号 (WLB00090).",
+      "fields": {
+        "donor_name": {
+          "xpath": "TEG822/WLA00000",
+          "type": "string",
+          "max_length": 100,
+          "required": true,
+          "notes": "寄附者の氏名."
+        },
+        "detail_rows": {
+          "xpath": "TEG822/WLB00000",
+          "type": "repeating",
+          "max_occurrences": 100,
+          "children": {
+            "receipt_number": {
+              "xpath": "WLB00010",
+              "type": "string",
+              "max_length": 50,
+              "required": true,
+              "notes": "領収書発行番号."
+            },
+            "donation_type": {
+              "xpath": "WLB00020",
+              "type": "gen:kubun2",
+              "required": true,
+              "values": "mismo que TEG821 WHB00020",
+              "notes": "寄附の種類. Mismos códigos que TEG821."
+            },
+            "donation_amount": {
+              "xpath": "WLB00050",
+              "type": "gen:kingaku",
+              "format": "integer",
+              "required": true,
+              "notes": "寄附金額."
+            },
+            "receipt_date": {
+              "xpath": "WLB00060",
+              "type": "gen:yyyymmdd",
+              "format": "western_date",
+              "required": true,
+              "notes": "受領年月日."
+            },
+            "organization_name": {
+              "xpath": "WLB00070",
+              "type": "string",
+              "max_length": 100,
+              "required": true,
+              "notes": "寄附を受けた団体名等."
+            },
+            "other_donation_number": {
+              "xpath": "WLB00090",
+              "type": "string",
+              "max_length": 50,
+              "required": false,
+              "notes": "その他寄附番号. Campo nuevo vs TEG821."
+            }
+          }
+        }
+      }
+    },
+    "kifu_kojo_shomei": {
+      "label": "寄附金控除に関する証明書",
+      "xsd_file": "TEG830-001.xsd",
+      "schema_version": "1.0",
+      "schema_date": "2021-04-26",
+      "root_element": "TEG830",
+      "namespace": "http://xml.e-tax.nta.go.jp/XSD/kyotsu",
+      "version_attribute": "VR",
+      "version_values": ["1.0"],
+      "notes": "Certificado de deducción de donaciones — distinto de 受領証明書. Estructura de 2 páginas (一面/二面). Incluye año en gen:yy (元号). Emitido por entes certificadores.",
+      "fields": {
+        "page_1": {
+          "xpath": "TEG830/TEG830-1",
+          "notes": "一面 (página 1). Campos principales.",
+          "children": {
+            "certificate_year": {
+              "xpath": "TEG830-1/WMA00000",
+              "type": "gen:yy",
+              "format": "wareki",
+              "required": true,
+              "notes": "証明年分. Año en era japonesa. Ej: <era>5</era><yy>6</yy> = 令和6年."
+            },
+            "donation_type": {
+              "xpath": "TEG830-1/WMB00000",
+              "type": "gen:kubun",
+              "required": true,
+              "values": {
+                "1": "国・地方公共団体",
+                "2": "公益社団法人等",
+                "3": "特定公益信託",
+                "4": "政治活動",
+                "5": "認定NPO法人等",
+                "6": "条例指定寄附金",
+                "7": "ふるさと納税",
+                "8": "その他"
+              },
+              "notes": "寄附の種類. kubun_CD 1-8."
+            },
+            "donor_name": {
+              "xpath": "TEG830-1/WMC00000",
+              "type": "string",
+              "max_length": 100,
+              "required": true,
+              "notes": "寄附者氏名（一面）."
+            },
+            "annual_donation_total": {
+              "xpath": "TEG830-1/WMF00000",
+              "type": "gen:kingaku",
+              "format": "integer",
+              "required": true,
+              "notes": "年間寄附額. Total anual."
+            },
+            "certificate_issuer_name": {
+              "xpath": "TEG830-1/WMJ00000",
+              "type": "string",
+              "max_length": 20,
+              "required": true,
+              "notes": "証明書発行者名."
+            },
+            "detail_rows": {
+              "xpath": "TEG830-1/WML00000/WML00010",
+              "type": "repeating",
+              "max_occurrences": 10,
+              "children": {
+                "donation_date": {
+                  "xpath": "WML00030",
+                  "type": "gen:yyyymmdd",
+                  "format": "western_date",
+                  "required": true,
+                  "notes": "寄附年月日."
+                },
+                "recipient_name": {
+                  "xpath": "WML00040/WML00050",
+                  "type": "string",
+                  "max_length": 20,
+                  "required": true,
+                  "notes": "寄附先 名称."
+                },
+                "donation_amount": {
+                  "xpath": "WML00070",
+                  "type": "gen:kingaku",
+                  "format": "integer",
+                  "required": true,
+                  "notes": "寄附金の額."
+                }
+              }
+            }
+          }
+        },
+        "page_2": {
+          "xpath": "TEG830/TEG830-2",
+          "required": false,
+          "notes": "二面 (página 2). Detalle adicional, hasta 50 subgrupos con 20 filas cada uno."
+        }
+      }
+    },
+    "kokumin_nenkin": {
+      "label": "国民年金保険料等控除証明書",
+      "xsd_file": "TEG840-001.xsd",
+      "schema_version": "1.0",
+      "schema_date": "2022-06-29",
+      "root_element": "TEG840",
+      "namespace": "http://xml.e-tax.nta.go.jp/XSD/kyotsu",
+      "version_attribute": "VR",
+      "version_values": ["1.0"],
+      "notes": "Certificado de deducción de prima de seguro nacional de pensión (国民年金保険料). También cubre 付加保険料 (prima adicional). Emitido por la Japan Pension Service (日本年金機構). Años en 元号 (gen:yy).",
+      "fields": {
+        "type1": {
+          "xpath": "TEG840/WOA00000",
+          "type": "gen:kubun",
+          "required": true,
+          "values": {
+            "1": "国民年金保険料",
+            "2": "付加保険料"
+          },
+          "notes": "種別１. kubun_CD 1-2."
+        },
+        "certificate_year_1": {
+          "xpath": "TEG840/WOC00000",
+          "type": "gen:yy",
+          "format": "wareki",
+          "required": true,
+          "notes": "証明年分１. Año en era japonesa."
+        },
+        "insured_name": {
+          "xpath": "TEG840/WOE00000",
+          "type": "string",
+          "max_length": 100,
+          "required": true,
+          "notes": "被保険者氏名."
+        },
+        "paid_amount": {
+          "xpath": "TEG840/WOK00000",
+          "type": "gen:kingaku",
+          "format": "integer",
+          "required": false,
+          "notes": "納付済額 (monto ya pagado)."
+        },
+        "estimated_amount": {
+          "xpath": "TEG840/WOL00000",
+          "type": "gen:kingaku",
+          "format": "integer",
+          "required": false,
+          "notes": "見込額 (monto estimado restante del año)."
+        },
+        "total_amount": {
+          "xpath": "TEG840/WOM00000",
+          "type": "gen:kingaku",
+          "format": "integer",
+          "required": false,
+          "notes": "合計額 = 納付済額 + 見込額."
+        },
+        "split_year_amounts": {
+          "xpath": "TEG840/WON00000",
+          "required": false,
+          "notes": "各年に分けて申告する場合の証明額. Subgrupos: 当年分 (WON00010), 翌年分 (WON00070), 翌々年分 (WON00130). Cada uno tiene: 納付済額, 見込額, 合計額, 申告年分 (gen:yy), 証明額."
+        }
+      }
+    },
+    "shoukibo_kyosai_ideco": {
+      "label": "小規模企業共済等掛金控除証明書",
+      "xsd_file": "TEG850-001.xsd",
+      "schema_version": "1.0",
+      "schema_date": "2023-05-09",
+      "root_element": "TEG850",
+      "namespace": "http://xml.e-tax.nta.go.jp/XSD/kyotsu",
+      "version_attribute": "VR",
+      "version_values": ["1.0"],
+      "notes": "Certificado unificado para 小規模企業共済 Y 個人型確定拠出年金 (iDeCo). Un solo documento puede cubrir ambos tipos. Años en gen:yy (元号). Emitido por 中小機構 (共済) o recordkeeper de iDeCo.",
+      "fields": {
+        "certificate_year": {
+          "xpath": "TEG850/WPA00000",
+          "type": "gen:yy",
+          "format": "wareki",
+          "required": true,
+          "notes": "証明年分. Año era japonesa."
+        },
+        "premium_type": {
+          "xpath": "TEG850/WPB00000",
+          "type": "gen:kubun",
+          "required": true,
+          "values": {
+            "1": "小規模企業共済掛金",
+            "2": "個人型確定拠出年金掛金（iDeCo）"
+          },
+          "notes": "掛金種別. kubun_CD: 1=小規模企業共済, 2=iDeCo."
+        },
+        "subscriber_name": {
+          "xpath": "TEG850/WPC00000",
+          "type": "string",
+          "max_length": 100,
+          "required": true,
+          "notes": "氏名."
+        },
+        "contract_number": {
+          "xpath": "TEG850/WPE00000",
+          "type": "string",
+          "max_length": 15,
+          "required": true,
+          "notes": "共済契約者番号/基礎年金番号."
+        },
+        "payment_year": {
+          "xpath": "TEG850/WPF00000",
+          "type": "gen:yy",
+          "format": "wareki",
+          "required": true,
+          "notes": "払込年分."
+        },
+        "paid_amount": {
+          "xpath": "TEG850/WPG00000/WPG00020",
+          "type": "gen:kingaku",
+          "format": "integer",
+          "required": false,
+          "notes": "払込済額 金額."
+        },
+        "scheduled_amount": {
+          "xpath": "TEG850/WPH00000/WPH00030",
+          "type": "gen:kingaku",
+          "format": "integer",
+          "required": false,
+          "notes": "払込予定額 金額."
+        },
+        "total_deductible_amount": {
+          "xpath": "TEG850/WPI00000",
+          "type": "gen:kingaku",
+          "format": "integer",
+          "required": false,
+          "notes": "控除合計額 (monto total deducible del año). Campo clave para la declaración."
+        },
+        "ideco_monthly_detail": {
+          "xpath": "TEG850/WPL00000",
+          "required": false,
+          "notes": "個人型確定拠出年金に関する事項. Detalle mensual (enero-diciembre) con 金額 y 備考 por mes. 12 subelementos WPL00010 a WPL00340."
+        },
+        "shoukibo_detail": {
+          "xpath": "TEG850/WPK00000",
+          "required": false,
+          "notes": "小規模企業共済掛金に関する事項. Incluye 契約年月日 (gen:yymmdd), 掛金月額 (gen:kingaku), 払込方法, 払込月."
+        }
+      }
+    }
+  },
+  "field_code_reference": {
+    "notes": "Prefijos de código de campo WC*=生命保険, WD*=地震, WG*=寄附(単), WH*=寄附(複), WL*=寄附(R3複), WM*=寄附控除証明, WO*=国民年金, WP*=小規模/iDeCo"
+  },
+  "import_strategy": {
+    "detection": "Leer el elemento raíz del XML para determinar el tipo (TEG800, TEG810, TEG820, TEG821, TEG822, TEG830, TEG840, TEG850).",
+    "signature_validation": "Todos los documentos requieren dsig:Signature. El parser puede omitir validación criptográfica en import básico, pero no debe eliminar el elemento.",
+    "amount_parsing": "gen:kingaku es xsd:long — usar int() directo, no float(). Sin separadores de miles en el XML.",
+    "year_parsing": {
+      "gen_yyyy": "Leer elemento <yyyy> directamente como int de 4 dígitos.",
+      "gen_yy": "Leer <era> y <yy>, convertir a 西暦: era5=+2018, era4=+1988, era3=+1925, era2=+1911, era1=+1867 (aproximaciones; usar tabla exacta).",
+      "wareki_to_seireki": {
+        "5": {"name": "令和", "offset": 2018},
+        "4": {"name": "平成", "offset": 1988},
+        "3": {"name": "昭和", "offset": 1925},
+        "2": {"name": "大正", "offset": 1911},
+        "1": {"name": "明治", "offset": 1867}
+      }
+    }
+  }
+}

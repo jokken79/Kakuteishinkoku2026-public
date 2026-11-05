@@ -1,0 +1,14 @@
+{
+  "date": "2025-03-08",
+  "vendor": "ドラッグストア コスモス",
+  "total": 1678,
+  "registration_number": "T9234567890123",
+  "is_qualified_invoice": true,
+  "tax_lines": [
+    {
+      "rate": 10,
+      "base": 1526,
+      "tax": 152
+    }
+  ]
+}
