@@ -18,8 +18,8 @@ jobs:
         run: docker compose exec -T backend alembic upgrade head
       - name: Verify API and frontend proxy
         run: |
-          curl --fail --retry 15 --retry-connrefused --retry-delay 2 http://127.0.0.1:8200/api/v1/health
-          curl --fail --retry 15 --retry-connrefused --retry-delay 2 http://127.0.0.1:5200/api/v1/onboarding/status
+          curl --fail --retry 30 --retry-all-errors --retry-delay 2 --connect-timeout 3 http://127.0.0.1:8200/api/v1/health
+          curl --fail --retry 30 --retry-all-errors --retry-delay 2 --connect-timeout 3 http://127.0.0.1:5200/api/v1/onboarding/status
           curl --fail http://127.0.0.1:5200/ | grep -q '<html'
       - name: Verify data survives backend recreation
         run: |
