@@ -156,11 +156,9 @@ def test_filing_combines_two_salaries_and_preserves_withholding(client: TestClie
     assert len(salaries) == 1
     assert salaries[0]["amount"] == salary_income(old_salary + 2_000_000, load_tax_rules(2025))
     assert draft["withholding_total"] == existing["total_withholding"] + 100_000
-    from xml.etree import ElementTree as ET
-
     xtx = client.get(f"/api/v1/filing/{draft['draft_id']}/xtx")
-    assert xtx.status_code == 200
-    assert ET.fromstring(xtx.content).findtext(".//ABB00080") == str(old_salary + 2_000_000)
+    assert xtx.status_code == 409
+    assert xtx.json()["detail"]["code"] == "xtx_xsd_not_verified"
     import pymupdf
 
     pdf = client.get(f"/api/v1/filing/{draft['draft_id']}/pdf?form=shinkokusho")
