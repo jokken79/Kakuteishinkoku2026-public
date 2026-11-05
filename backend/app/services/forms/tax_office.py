@@ -37,6 +37,7 @@ class TaxOffice:
     tel: str
     national_bureau: str
     jurisdiction: str
+    etax_code: str | None = None
 
     @property
     def header_label(self) -> str:
@@ -49,6 +50,7 @@ class TaxOffice:
 _OFFICES: dict[str, TaxOffice] = {
     "tsushima": TaxOffice(
         key="tsushima",
+        etax_code="06127",  # zeimusho.xsd vigente: 06127:津島.
         header_name="津島",
         postal_code="496-8720",  # CONFIRMADO (research 06 §4).
         tel="0567-26-2161",  # CONFIRMADO.

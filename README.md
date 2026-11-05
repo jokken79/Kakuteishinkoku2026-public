@@ -5,7 +5,7 @@ Aplicación local para organizar ingresos, gastos y borradores de 確定申告. 
 ## Limitaciones
 
 - Software beta: los cálculos deben verificarse con las fuentes oficiales y las circunstancias individuales.
-- El archivo `.xtx` no cumple todavía el XSD oficial y no debe considerarse listo para presentar. La exportación oficial de 2026 permanece bloqueada mientras no se verifique su formato.
+- El generador `.xtx` de 2025 pasa las comprobaciones XSD con datos sintéticos. La descarga permanece bloqueada hasta verificar la importación y completar los casos fiscales aplicables. La exportación oficial de 2026 sigue bloqueada: las especificaciones definitivas aún están pendientes.
 - La autenticación está desactivada por defecto. Ejecute la aplicación solo en un equipo de confianza y no la exponga a Internet sin controles de acceso y revisión de seguridad. El OCR externo requiere configuración y consentimiento.
 
 ## Desarrollo local (SQLite)

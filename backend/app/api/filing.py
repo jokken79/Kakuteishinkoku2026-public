@@ -7,11 +7,12 @@ Endpoints (bajo `/api/v1`):
 - ``GET  /filing/{id}/summary``           — resumen para revision humana.
 - ``GET  /filing/{id}/pdf?form=...``      — PDF de un formulario (StreamingResponse).
 - ``GET  /filing/{id}/official-package``  — ZIP con 申告書類一式 + manifiesto.
-- ``GET  /filing/{id}/xtx``               — bloqueado hasta verificar el XSD.
+- ``GET  /filing/{id}/xtx``               — descarga bloqueada; verificación pendiente.
 - ``GET  /filing/{id}/csv``               — CSV (SHIFT-JIS) del 決算書.
 
 ⚠️ Realismo (research 04 §6): la app GENERA archivos; **no envia a e-Tax** (no
-hay API publica de envio). El XTX permanece bloqueado hasta verificar el XSD;
+hay API publica de envio). El XTX permanece bloqueado hasta completar la
+verificación fiscal y de importación;
 los PDF son borradores que requieren revisión. Esta herramienta es de apoyo, no 税務代理.
 """
 
@@ -316,7 +317,7 @@ def _require_verified_export(year: int) -> None:
 
 
 def _require_xtx_xsd_verified() -> None:
-    """Impide descargar un XML que no satisface el XSD oficial del procedimiento."""
+    """Mantiene cerrada la descarga hasta verificar contenido fiscal e importación."""
     raise HTTPException(
         status_code=status.HTTP_409_CONFLICT,
         detail={

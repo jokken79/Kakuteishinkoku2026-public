@@ -34,6 +34,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Validación local opcional contra el árbol XSD oficial de e-Tax.
+etax = ["lxml>=6.0"]
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",

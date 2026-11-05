@@ -6,6 +6,8 @@ valida el .xtx real generado por ``build_xtx`` desde el seed.
 
 from __future__ import annotations
 
+from datetime import date
+
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
@@ -17,6 +19,7 @@ from app.seed.dev_seed import seed_demo_data
 from app.services.forms.drafting import build_filing_draft
 from app.services.forms.etax_export import build_xtx
 from app.services.forms.etax_validator import load_valid_tags, validate_xtx
+from app.services.forms.xtx_envelope import XtxIdentity
 
 _PROLOG = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>'
 
@@ -148,7 +151,14 @@ def test_generated_xtx_is_not_certified_by_legacy_diagnostic() -> None:
     session.commit()
     try:
         draft = build_filing_draft(session, year=2025)
-        report = validate_xtx(build_xtx(draft), year=2025)
+        assert draft.taxpayer_profile is not None
+        assert draft.taxpayer_profile.address is not None
+        identity = XtxIdentity(
+            "0000000000000000", draft.taxpayer_name, draft.taxpayer_profile.address, "06127"
+        )
+        report = validate_xtx(
+            build_xtx(draft, identity=identity, created_on=date(2026, 1, 1)), year=2025
+        )
         assert not report.ok
         assert "official_xsd_not_validated" in [i.code for i in report.issues]
     finally:

@@ -6,13 +6,10 @@ CAB" del NTA). Este módulo expone los **tags ABA/ABB confirmados** del 申告�
 valor del ``FilingDraftResult`` a su tag oficial SIN hardcodear ~50 strings
 sueltos a lo largo del generador.
 
-⚠️ Solo se incluyen tags **confirmados** en el JSON (``confirmed_tag_examples``
-+ ``header_fields`` + ``fields``). Un tag inventado rompe el envío real al NTA,
-así que cualquier campo del owner sin tag confirmado se omite (con un comentario
-``# TODO: tag no confirmado`` en ``build_xtx``).
-
-El XSD oficial exige un sobre RKO0010 y grupos anidados que el generador
-heredado aún no implementa. Estas constantes no acreditan conformidad.
+Estas constantes identifican las casillas monetarias existentes. Las rutas,
+los tipos, las etiquetas y el orden oficiales se conservan en
+``xtx_fields_r7.json``; ``xtx_document`` realiza el ensamblado. La validación
+XSD no sustituye la verificación fiscal ni la prueba de importación.
 """
 
 from __future__ import annotations

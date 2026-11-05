@@ -35,7 +35,18 @@ from app.seed.dev_seed import (
     DEMO_WITHHOLDING_TAX,
     seed_demo_data,
 )
-from app.services.forms.drafting import build_filing_draft
+from app.services.forms.drafting import FilingDraftResult, build_filing_draft
+from app.services.forms.xtx_envelope import XtxIdentity
+
+
+def _synthetic_xtx(draft: FilingDraftResult) -> bytes:
+    from app.services.forms.etax_export import build_xtx
+
+    assert draft.taxpayer_profile is not None
+    assert draft.taxpayer_profile.address is not None
+    return build_xtx(draft, identity=XtxIdentity(
+        "0000000000000000", draft.taxpayer_name, draft.taxpayer_profile.address, "06127",
+    ), created_on=date(2026, 1, 1))
 
 
 @pytest.fixture
@@ -457,17 +468,16 @@ def test_xtx_rejects_unmapped_income_source(client: TestClient) -> None:
 
 
 def test_xtx_internal_disability_field_only_when_unambiguous(session: Session) -> None:
-    from app.services.forms.etax_export import build_xtx
 
     result = build_filing_draft(session, 2025)
     deductions = result.tax.deduction_breakdown
     deductions.ordinary_disability_self = True
     deductions.other = 270_000
-    root = ET.fromstring(build_xtx(result))
-    assert root.findtext(".//ABB00510") == "270000"
+    root = ET.fromstring(_synthetic_xtx(result))
+    assert root.findtext(".//{*}ABB00510") == "270000"
     deductions.other = 540_000
-    root = ET.fromstring(build_xtx(result))
-    assert root.find(".//ABB00510") is None
+    root = ET.fromstring(_synthetic_xtx(result))
+    assert root.find(".//{*}ABB00510") is None
 
 
 def test_official_form_sums_multiple_sources_of_same_kind(session: Session) -> None:
@@ -521,7 +531,6 @@ def test_xtx_separates_withholding_and_prepayment(session: Session) -> None:
         TaxCalculationInput,
         WithholdingInput,
     )
-    from app.services.forms.etax_export import build_xtx
 
     result = build_filing_draft(session, 2025)
     result.tax = calculate(TaxCalculationInput(
@@ -529,11 +538,11 @@ def test_xtx_separates_withholding_and_prepayment(session: Session) -> None:
         deductions=DeductionInput(social_insurance=600_000),
         withholding=WithholdingInput(withholding_tax=100_000, estimated_prepayment=240_000),
     ))
-    root = ET.fromstring(build_xtx(result))
-    assert root.findtext(".//ABB00710") == "100000"
-    assert root.findtext(".//ABB00720") == "233300"
-    assert root.findtext(".//ABB00730") == "240000"
-    assert root.findtext(".//ABB00760") == "6700"
+    root = ET.fromstring(_synthetic_xtx(result))
+    assert root.findtext(".//{*}ABB00710") == "100000"
+    assert root.findtext(".//{*}ABB00720") == "233300"
+    assert root.findtext(".//{*}ABB00730") == "240000"
+    assert root.findtext(".//{*}ABB00760") == "6700"
 
 
 def test_draft_matches_tax_calculate(client: TestClient) -> None:
@@ -660,7 +669,6 @@ def test_xtx_is_unavailable_until_official_schema_is_verified(client: TestClient
 def test_xtx_owner_real_case_r7() -> None:
     """El .xtx del ejemplo sintético excluye el crédito rechazado."""
     from app.seed.dev_seed import seed_dev_data
-    from app.services.forms.etax_export import build_xtx
 
     engine = create_db_engine("sqlite://")
     Base.metadata.create_all(engine)
@@ -671,36 +679,36 @@ def test_xtx_owner_real_case_r7() -> None:
             tx.status = TransactionStatus.CONFIRMED
         db.commit()
         draft = build_filing_draft(db, 2025)
-        content = build_xtx(draft)
+        content = _synthetic_xtx(draft)
 
         # (a) parsea como XML; (e) encoding UTF-8.
         assert b'encoding="UTF-8"' in content
         root = ET.fromstring(content)
         # (b) sobre oficial.
-        assert root.tag == "DATA"
-        koa020 = root.find("KOA020")
+        assert root.tag == "{http://xml.e-tax.nta.go.jp/XSD/shotoku}DATA"
+        koa020 = root.find(".//{*}KOA020")
         assert koa020 is not None and koa020.attrib["VR"] == "23.0"
-        assert koa020.attrib["id"] == "KOA020"
-        page1 = koa020.find("KOA020-1")
+        assert koa020.attrib["id"] == "KOA020-1"
+        page1 = koa020.find("{*}KOA020-1")
         assert page1 is not None
-        assert page1.find("ABA00000") is not None  # cabecera.
-        assert page1.find("ABB00000") is not None  # cuerpo 第一表.
+        assert page1.find("{*}ABA00000") is not None  # cabecera.
+        assert page1.find("{*}ABB00000") is not None  # cuerpo 第一表.
 
         # 年分 (ABA00010): 令和(5) + 07.
-        nenbun = root.find(".//ABA00010")
-        assert nenbun.find("Gengo").text == "5"
-        assert nenbun.find("Nen").text == "07"
+        nenbun = root.find(".//{*}ABA00010")
+        assert nenbun.attrib["IDREF"] == "NENBUN"
+        assert root.findtext(".//{*}NENBUN/{*}era") == "5"
+        assert root.findtext(".//{*}NENBUN/{*}yy") == "7"
         # 申告の種類 = 1 (確定), 青色区分 = 1.
-        assert root.find(".//ABA00020").text == "1"
-        assert root.find(".//ABA00240").text == "1"
+        assert root.find(".//{*}ABA00020").attrib["IDREF"] == "SHINKOKU_KBN"
+        assert root.findtext(".//{*}ABA00240/{*}kubun_CD") == "1"
 
         # Los importes corresponden al borrador sintético calculado.
-        assert root.find(".//ABB00410").text == str(draft.tax.total_income)
-        assert root.find(".//ABB00650") is None
+        assert root.find(".//{*}ABB00410").text == str(draft.tax.total_income)
+        assert root.find(".//{*}ABB00650") is None
 
-        # (d) NO hay bloque KOA210 / 決算書 en el XML.
-        assert root.find(".//KOA210") is None
-        assert b"KOA210" not in content
+        assert root.find(".//{*}KOA210") is not None
+        assert root.find(".//{*}KOA020-2") is not None
     finally:
         db.close()
         Base.metadata.drop_all(engine)
@@ -711,21 +719,15 @@ def test_xtx_only_confirmed_tags_and_int_format(session: Session) -> None:
     """Validación de esquema: todo tag ABA/ABB emitido está en el set CONFIRMADO
     (research 10 / CAB oficial) — cero tags inventados — y los montos son enteros
     sin separadores de miles."""
-    from app.services.forms import etax_schema_r7 as s
-    from app.services.forms.etax_export import build_xtx
+    from app.services.forms.xtx_catalog import field_catalog
 
-    content = build_xtx(build_filing_draft(session, 2025))
+    content = _synthetic_xtx(build_filing_draft(session, 2025))
     root = ET.fromstring(content)
 
-    # Set de tags ABA/ABB confirmados (constantes TAG_*/GROUP del esquema).
-    confirmed = {
-        v for k, v in vars(s).items()
-        if isinstance(v, str) and (v.startswith("ABA") or v.startswith("ABB"))
-    }
-    confirmed |= {s.HEADER_GROUP, s.BODY_GROUP}
+    confirmed = {row["path"].split("/")[-1] for row in field_catalog()["KOA020-1"]}
 
     for el in root.iter():
-        tag = el.tag
+        tag = el.tag.split("}")[-1]
         if tag.startswith(("ABA", "ABB")):
             assert tag in confirmed, f"tag NO confirmado en el esquema: {tag}"
         # Montos: los tags ABB de cuerpo con texto numérico no llevan comas.
@@ -733,8 +735,8 @@ def test_xtx_only_confirmed_tags_and_int_format(session: Session) -> None:
             assert "," not in el.text, f"monto con separador de miles: {tag}={el.text}"
 
     # Tags estructurales nuevos del 第一表 presentes (㊹基準, ㊻所得税等の額).
-    assert root.find(".//ABB01010") is not None  # 基準所得税額.
-    assert root.find(".//ABB01030") is not None  # 所得税及び復興特別所得税の額.
+    assert root.find(".//{*}ABB01010") is not None  # 基準所得税額.
+    assert root.find(".//{*}ABB01030") is not None  # 所得税及び復興特別所得税の額.
 
 
 # --- CSV (SHIFT-JIS) ------------------------------------------------------

@@ -1,8 +1,9 @@
 """Diagnóstico parcial del XML heredado KOA020 (令和7).
 
 Comprueba solo algunos aspectos de la salida heredada de ``build_xtx``.
-El formato de esa salida no cumple el XSD oficial; este diagnóstico nunca
-certifica que el documento sea apto para presentar. Revisa:
+Este diagnóstico reconoce la estructura antigua; el generador actual usa un
+sobre RKO0010. Para comprobarlo se requiere el XSD oficial completo. Ningún
+diagnóstico interno acredita por sí solo aptitud para presentar. Revisa:
 
     1. Prólogo XML exacto (UTF-8, standalone="no").
     2. Buen formato (well-formed) y sobre ``<DATA>``.
@@ -42,10 +43,10 @@ _COMPOSITE_CHILDREN = {"Gengo", "Nen", "Tsuki", "Hi"}
 
 # Redondeos legales por tag (el valor debe ser múltiplo de N).
 _ROUNDING: dict[str, int] = {
-    "ABB00580": 1000,   # 課税される所得金額 — 千円未満切捨て.
-    "ABB00720": 100,    # 申告納税額 — 百円未満切捨て.
-    "ABB00750": 100,    # 第3期分 納める税金 — 百円未満切捨て.
-    "ABB00650": 100,    # 住宅借入金等特別控除 — 百円未満切捨て.
+    "ABB00580": 1000,  # 課税される所得金額 — 千円未満切捨て.
+    "ABB00720": 100,  # 申告納税額 — 百円未満切捨て.
+    "ABB00750": 100,  # 第3期分 納める税金 — 百円未満切捨て.
+    "ABB00650": 100,  # 住宅借入金等特別控除 — 百円未満切捨て.
     "ABB00550": 10000,  # 基礎控除 — 万円未満切捨て.
 }
 
@@ -161,9 +162,7 @@ def validate_xtx(xtx: bytes, *, year: int = 2025, schema_path: Path | None = Non
 
     # 3) Sobre <DATA>.
     if root.tag != "DATA":
-        issues.append(
-            XtxIssue("error", "root", f"La raíz debe ser <DATA>, no <{root.tag}>.")
-        )
+        issues.append(XtxIssue("error", "root", f"La raíz debe ser <DATA>, no <{root.tag}>."))
 
     # 4) KOA020 + VR.
     forms = [c for c in root if c.tag == "KOA020"]
@@ -188,9 +187,7 @@ def validate_xtx(xtx: bytes, *, year: int = 2025, schema_path: Path | None = Non
         for page in page1:
             child_tags = {c.tag for c in page}
             if "ABA00000" not in child_tags:
-                issues.append(
-                    XtxIssue("error", "missing_header", "Falta <ABA00000> (cabecera).")
-                )
+                issues.append(XtxIssue("error", "missing_header", "Falta <ABA00000> (cabecera)."))
             if "ABB00000" not in child_tags:
                 issues.append(
                     XtxIssue("warning", "missing_body", "Falta <ABB00000> (cuerpo 第一表).")
@@ -298,3 +295,96 @@ def _finish(issues: list[XtxIssue], emitted: list[str], known: int) -> XtxReport
         emitted_field_tags=sorted(set(emitted)),
         known_field_tags=known,
     )
+
+
+def validate_xtx_against_xsd(xtx: bytes, schema_path: Path, *, year: int = 2025) -> XtxReport:
+    """Valida con el XSD local oficial sin consultar la red ni revelar valores.
+
+    `ok` acredita solo la estructura XSD. La completitud fiscal y aceptación por
+    e-Tax requieren comprobaciones independientes antes de permitir una descarga.
+    """
+    issues: list[XtxIssue] = []
+    if year != 2025 or schema_path.name != "RKO0010-250.xsd":
+        return _finish([XtxIssue("error", "unsupported_xsd_year", "XSD/año no verificado.")], [], 0)
+    if len(xtx) > 5_000_000:
+        return _finish(
+            [XtxIssue("error", "xml_too_large", "XML excede el límite de tamaño.")], [], 0
+        )
+    try:
+        ET.fromstring(xtx)
+    except (ET.ParseError, DefusedXmlException):
+        return _finish([XtxIssue("error", "unsafe_xml", "XML mal formado o inseguro.")], [], 0)
+    try:
+        from lxml import etree
+    except ImportError:
+        return _finish(
+            [XtxIssue("error", "xsd_dependency_missing", "Falta lxml para validar XSD.")], [], 0
+        )
+    if not schema_path.is_file():
+        return _finish(
+            [XtxIssue("error", "xsd_missing", "Falta el árbol XSD oficial local.")], [], 0
+        )
+    try:
+        parser = etree.XMLParser(resolve_entities=False, no_network=True)
+        schema = etree.XMLSchema(etree.parse(str(schema_path), parser))
+        root = etree.fromstring(xtx, parser)
+    except (etree.XMLSyntaxError, etree.XMLSchemaParseError, OSError):
+        return _finish(
+            [XtxIssue("error", "xsd_load_failed", "No se pudo cargar el esquema oficial.")], [], 0
+        )
+    if not schema.validate(root):
+        # El mensaje original del validador puede contener identificadores personales.
+        for issue in schema.error_log:
+            issues.append(
+                XtxIssue("error", "xsd_invalid", f"XSD: {issue.type_name}; línea {issue.line}.")
+            )
+    ids = [value for el in root.iter() for key, value in el.attrib.items() if key in {"id", "ID"}]
+    if len(ids) != len(set(ids)):
+        issues.append(XtxIssue("error", "duplicate_id", "Hay identificadores XML duplicados."))
+    refs = [el.get("IDREF") for el in root.iter() if el.get("IDREF")]
+    rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    descriptions = list(root.iter(f"{{{rdf}}}Description"))
+    for el in descriptions:
+        about = el.get("about")
+        if about:
+            if not about.startswith("#"):
+                issues.append(
+                    XtxIssue(
+                        "error", "external_rdf_reference", "Referencia RDF externa no permitida."
+                    )
+                )
+            else:
+                refs.append(about[1:])
+    if any(ref not in set(ids) for ref in refs):
+        issues.append(
+            XtxIssue("error", "unresolved_reference", "Hay referencias IT/RDF sin destino.")
+        )
+    ns = "http://xml.e-tax.nta.go.jp/XSD/shotoku"
+    procedure = root.find(f"{{{ns}}}RKO0010")
+    contents = root.find(f".//{{{ns}}}CONTENTS")
+    if procedure is None or contents is None:
+        issues.append(
+            XtxIssue("error", "missing_procedure", "Falta el procedimiento o su contenido.")
+        )
+    else:
+        catalog = procedure.find(f"{{{ns}}}CATALOG")
+        if catalog is None or catalog.find(f".//{{{ns}}}SEND_DATA") is None:
+            issues.append(
+                XtxIssue("error", "missing_rdf_catalog", "Falta el catálogo RDF requerido.")
+            )
+        targets = {el.get("about") for el in descriptions}
+        required = {"#" + el.get("id") for el in contents if el.get("id")}
+        if not required.issubset(targets):
+            issues.append(
+                XtxIssue(
+                    "error",
+                    "incomplete_rdf_catalog",
+                    "El catálogo no referencia todos los formularios e IT.",
+                )
+            )
+    tags = [
+        str(el.tag).split("}")[-1]
+        for el in root.iter()
+        if isinstance(el.tag, str) and _FIELD_TAG_RE.match(str(el.tag).split("}")[-1])
+    ]
+    return _finish(issues, tags, 0)
