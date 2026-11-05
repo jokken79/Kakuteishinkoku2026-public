@@ -18,6 +18,6 @@ La [página oficial de 国税庁](https://www.nta.go.jp/taxes/shiraberu/shinkoku
 
 ## Docker
 
-`docker compose config --quiet` pasó. Docker Desktop no ofreció un motor disponible después del intento de inicio; por lo tanto, no se ejecutaron contenedores, migraciones en PostgreSQL ni pruebas de red o persistencia de Docker. La configuración debe probarse en un proyecto y volúmenes aislados antes de declararse operativa.
+El motor Docker de este equipo no respondió. En su lugar se ejecutó [un smoke aislado en GitHub Actions](https://github.com/jokken79/Kakuteishinkoku2026-public/actions/runs/41984169667): build de imágenes, inicio de PostgreSQL y servicios, migración Alembic de una base vacía, consulta de health y onboarding a través de nginx, y persistencia de un archivo sintético al recrear el backend. Resultado: **PASS**. El ejecutor y sus volúmenes temporales se eliminaron al terminar; no se usaron archivos ni bases personales.
 
-La revisión estática detectó que el contenedor backend no copia ni ejecuta migraciones Alembic; el servicio frontend utiliza `vite preview` sin configuración de proxy `/api`; y `backend/data` no está montado como volumen persistente. Estos puntos no se han comprobado en ejecución y requieren corrección y prueba aislada.
+La primera ejecución detectó que PostgreSQL rechazaba una asignación entera a un campo booleano; la migración se corrigió y volvió a pasar en SQLite y PostgreSQL. La configuración integra nginx como proxy `/api`, copia las migraciones y monta un volumen para `backend/data`. La migración se ejecuta explícitamente; haga un respaldo antes de aplicarla a una base existente. No se probó Docker Desktop en este equipo ni la recuperación de una copia de seguridad.
