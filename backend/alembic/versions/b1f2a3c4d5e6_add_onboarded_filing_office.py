@@ -46,7 +46,7 @@ def upgrade() -> None:
         )
     # Los contribuyentes ya existentes (demo) NO deben ver el onboarding: se
     # marcan como ya onboardeados.
-    op.execute("UPDATE taxpayer SET onboarded = 1")
+    op.execute("UPDATE taxpayer SET onboarded = TRUE")
 
 
 def downgrade() -> None:
