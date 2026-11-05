@@ -47,6 +47,41 @@ def _empty_control() -> etree._Element:
     return root
 
 
+def _mapped_control(payload: bytes, form_xsd: Path) -> tuple[etree._Element, int, int]:
+    """Reubica importes sintéticos en un sobre de control; no es un XTX para presentar."""
+    ns = "http://xml.e-tax.nta.go.jp/XSD/shotoku"
+    xsd_ns = {"x": "http://www.w3.org/2001/XMLSchema"}
+    root = _empty_control()
+    page = root.find(f".//{{{ns}}}KOA020-1")
+    if page is None:
+        raise ValueError("El control sintético no contiene KOA020-1")
+    body = etree.SubElement(page, f"{{{ns}}}ABB00000")
+    legacy = etree.fromstring(payload)
+    values = {el.tag: el.text for el in legacy.xpath(".//ABB00000/*")}
+    schema = etree.parse(str(form_xsd))
+    nodes = schema.xpath(
+        '//x:complexType[@name="KOA020-1-23-0type"]//x:element[starts-with(@name,"ABB")]',
+        namespaces=xsd_ns,
+    )
+    groups: dict[tuple[str, ...], etree._Element] = {("ABB00000",): body}
+    mapped = 0
+    for node in nodes:
+        tag = node.get("name")
+        if tag not in values:
+            continue
+        parents = node.xpath("ancestor::x:element/@name", namespaces=xsd_ns)
+        path = tuple(part for part in parents if part.startswith("ABB")) + (tag,)
+        parent = body
+        for index, part in enumerate(path[1:], start=1):
+            key = path[:index + 1]
+            if key not in groups:
+                groups[key] = etree.SubElement(parent, f"{{{ns}}}{part}")
+            parent = groups[key]
+        parent.text = values[tag]
+        mapped += 1
+    return root, mapped, len(values)
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print("Uso: python ../tools/verify_official_xtx.py RUTA/RKO0010-250.xsd", file=sys.stderr)
@@ -64,8 +99,14 @@ def main() -> int:
         with get_session_factory(engine)() as session:
             seed_demo_data(session)
             payload = build_xtx(build_filing_draft(session, 2025))
+        mapped_control, count, total = _mapped_control(payload, Path(sys.argv[1]).with_name("KOA020-023.xsd"))
+        mapped_ok = schema.validate(mapped_control)
+        print(f"Control con importes sinteticos: {count}/{total}; XSD:", "PASS" if mapped_ok else "FAIL")
+        if not mapped_ok:
+            for issue in schema.error_log:
+                print(issue.message)
         valid = schema.validate(etree.fromstring(payload))
-        print("XSD oficial:", "PASS" if valid else "FAIL")
+        print("XSD oficial del generador actual:", "PASS" if valid else "FAIL")
         for issue in schema.error_log:
             print(issue.message)
         return 0 if valid else 1
