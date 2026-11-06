@@ -32,7 +32,13 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y fonts-ipaexfont-gothic
 
       - name: Instalar dependencias
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,etax]"
+
+      - name: Prepare pinned official XSD
+        uses: ./.github/actions/official-xsd
+
+      - name: Verify official XTX field catalog and synthetic document
+        run: python ../tools/verify_official_xtx.py "$ETAX_OFFICIAL_XSD"
 
       - name: Ruff (lint)
         run: ruff check app tests

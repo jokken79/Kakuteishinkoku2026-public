@@ -1,0 +1,20 @@
+name: Official R7 XSD
+description: Download pinned public NTA schema tree; never any filing data
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y cabextract
+        cab="$RUNNER_TEMP/etax19.CAB"
+        root="$RUNNER_TEMP/etax-official-xsd"
+        curl --fail --location --retry 3 --connect-timeout 20 --max-time 180 https://www.e-tax.nta.go.jp/shiyo/ksk2/download/e-tax19.CAB --output "$cab"
+        echo "48dc25a89a2b82a2b629f021e1779240cb2fe9f7e0c173e23239793feb4dfb55  $cab" | sha256sum --check
+        mkdir -p "$root"
+        cabextract -q -d "$root" "$cab"
+        schema=$(find "$root" -name RKO0010-250.xsd -print -quit)
+        test -n "$schema"
+        echo "ETAX_OFFICIAL_XSD=$schema" >> "$GITHUB_ENV"
+        echo "ETAX_XSD_ROOT=$root" >> "$GITHUB_ENV"
+        echo "ETAX_XSD_RELATIVE=${schema#"$root/"}" >> "$GITHUB_ENV"

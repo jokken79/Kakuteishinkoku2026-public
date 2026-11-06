@@ -16,6 +16,11 @@ from app.services.forms.xtx_envelope import (
     XtxIdentity,
     build_experimental_envelope,
 )
+from app.services.forms.xtx_insurance import (
+    INSURANCE_TAGS,
+    InsurancePayment,
+    insurance_deductions,
+)
 
 
 @dataclass(frozen=True)
@@ -36,12 +41,22 @@ class PremiumPayment:
 
 
 @dataclass(frozen=True)
+class MunicipalDonation:
+    name: str = field(repr=False)
+    location: str = field(repr=False)
+    paid: int
+
+
+@dataclass(frozen=True)
 class XtxDetails:
     payers: tuple[PayerIncome, ...] = ()
     monthly_sales: tuple[int, ...] | None = None
     opening_balances: dict[str, int] | None = field(default=None, repr=False)
     premiums: tuple[PremiumPayment, ...] = ()
     business_period: tuple[date, date] | None = None
+    insurance: tuple[InsurancePayment, ...] = ()
+    separate_damage_contracts: bool = False
+    donations: tuple[MunicipalDonation, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -52,7 +67,7 @@ class XtxBuild:
 
     @property
     def ready_for_submission(self) -> bool:
-        # La aceptación por e-Tax aún no se ha verificado para este generador.
+        # El visor reconoce el XML base; falta cotejar casillas y escenarios fiscales.
         return False
 
 
@@ -368,8 +383,10 @@ def build_xtx_document(
     details: XtxDetails | None = None,
 ) -> XtxBuild:
     """Genera el XML completo conocido y enumera cada bloque pendiente."""
+    from app.domain.tax.deductions import furusato_deduction
     from app.services.forms.etax_export import _build_body
     from app.services.forms.tax_office import resolve_tax_office
+    from app.services.tax_rules import load_tax_rules
 
     if identity.name != draft.taxpayer_name:
         raise ValueError("La identidad no coincide con el contribuyente del borrador.")
@@ -378,6 +395,12 @@ def build_xtx_document(
         raise ValueError("La dirección no coincide con el perfil del borrador.")
     details = details or XtxDetails()
     missing: list[str] = ["official_import_acceptance"]
+    if draft.tax.final_amount < 0:
+        missing.append("refund_account")
+    if draft.income_statement.net_income < 0:
+        missing.append("business_loss_schedule")
+    if any(line.account_name == "仕入" and line.amount for line in draft.income_statement.expenses):
+        missing.append("inventory_schedule")
     expected_office = resolve_tax_office(profile.filing_office_key).etax_code
     if expected_office is None:
         missing.append("tax_office_assignment")
@@ -474,13 +497,63 @@ def build_xtx_document(
                 ("ABH00580", str(premium.outside_year_end_adjustment)),
             ):
                 ET.SubElement(row, f"{{{SHOTOKU}}}{tag}").text = value
+    insurance_values: dict[str, int | str | ET.Element] = {}
+    for payment in details.insurance:
+        for tag, amount in zip(
+            INSURANCE_TAGS[payment.category],
+            (payment.paid, payment.outside_year_end_adjustment), strict=True,
+        ):
+            insurance_values[tag] = _amount(insurance_values, tag) + amount
+    life, earthquake = insurance_deductions(details.insurance)
+    for category, actual, expected in (
+        ("life_insurance", life, db.life_insurance),
+        ("earthquake_insurance", earthquake, db.earthquake_insurance),
+    ):
+        if actual != expected:
+            missing.append("insurance_reconciliation:" + category)
+    categories = {r.category for r in details.insurance if r.paid}
+    if {"earthquake", "old_damage"}.issubset(categories) and not details.separate_damage_contracts:
+        missing.append("damage_contract_election")
+    if insurance_values:
+        page2 = form.find(f"{{{SHOTOKU}}}KOA020-2")
+        assert page2 is not None
+        # emit_fields conserva el orden oficial; fusionar el grupo evita duplicar ABH00000.
+        temporary_page = ET.Element("temporary")
+        emit_fields(temporary_page, "KOA020-2", insurance_values)
+        source = temporary_page.find(f"{{{SHOTOKU}}}ABH00000")
+        assert source is not None
+        destination = page2.find(f"{{{SHOTOKU}}}ABH00000")
+        if destination is None:
+            page2.append(source)
+        else:
+            destination.extend(source)
+    donated = sum(row.paid for row in details.donations)
+    computed_donation = furusato_deduction(
+        donated, draft.tax.total_income, load_tax_rules(draft.year)
+    )
+    if computed_donation != db.furusato:
+        missing.append("donation_reconciliation")
+    for index, donation in enumerate(details.donations):
+        if not donation.name.strip() or not donation.location.strip() or donation.paid <= 0:
+            raise ValueError("El comprobante de donación requiere nombre, dirección e importe.")
+        # Un destinatario por página: no truncar nombres ni omitir ayuntamientos.
+        donation_page = ET.SubElement(form, f"{{{SHOTOKU}}}KOA020-2")
+        donation_values: dict[str, int | str | ET.Element] = {
+            "ABC00010": _reference("ABC00010", "NENBUN"),
+            "ABC00015": _reference("ABC00015", "SHINKOKU_KBN"),
+            "ABC00040": _reference("ABC00040", "NOZEISHA_ADR"),
+            "ABC00070": _reference("ABC00070", "NOZEISHA_NM"),
+            "ABH00280": donation.location, "ABH00290": donation.name,
+            "ABH00300": donation.paid,
+        }
+        if index == 0:
+            # NTA 1155: también es obligatorio en la sección de 住民税.
+            donation_values["ABI00240"] = donated
+        emit_fields(donation_page, "KOA020-2", donation_values)
     for name in (
         "medical",
-        "life_insurance",
-        "earthquake_insurance",
         "dependents",
         "spouse",
-        "furusato",
         "other",
     ):
         if getattr(db, name):
@@ -504,7 +577,9 @@ def build_xtx_document(
             {
                 e.tag.split("}")[-1]
                 for e in root.iter()
-                if e.tag.split("}")[-1].startswith(("ABA", "ABB", "ABC", "ABD", "AMF", "AMG"))
+                if e.tag.split("}")[-1].startswith(
+                    ("ABA", "ABB", "ABC", "ABD", "ABH", "ABI", "AMF", "AMG")
+                )
             }
         )
     )

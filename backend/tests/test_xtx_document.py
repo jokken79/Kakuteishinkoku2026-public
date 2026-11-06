@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import xml.etree.ElementTree as ET  # nosec B405
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -18,12 +19,14 @@ from app.services.forms.etax_export import build_xtx
 from app.services.forms.etax_validator import validate_xtx_against_xsd
 from app.services.forms.xtx_catalog import emit_fields
 from app.services.forms.xtx_document import (
+    MunicipalDonation,
     PayerIncome,
     PremiumPayment,
     XtxDetails,
     build_xtx_document,
 )
 from app.services.forms.xtx_envelope import SHOTOKU, XtxIdentity
+from app.services.forms.xtx_insurance import InsurancePayment
 
 
 @pytest.fixture
@@ -162,6 +165,47 @@ def test_unknown_field_is_rejected() -> None:
         emit_fields(ET.Element(f"{{{SHOTOKU}}}KOA020-1"), "KOA020-1", {"ABB99999": 100})
 
 
+def test_insurance_and_municipal_donations_are_complete_and_schema_valid(
+    synthetic_draft: FilingDraftResult,
+) -> None:
+    draft = synthetic_draft
+    draft.tax.deduction_breakdown.life_insurance = 40_000
+    draft.tax.deduction_breakdown.earthquake_insurance = 20_000
+    draft.tax.deduction_breakdown.furusato = 28_000
+    extra = replace(details(draft), insurance=(
+        InsurancePayment("new_life", 80_000, 20_000),
+        InsurancePayment("earthquake", 20_000, 20_000),
+    ), donations=(MunicipalDonation("Synthetic City A", "Synthetic A", 10_000),
+                  MunicipalDonation("Synthetic City B", "Synthetic B", 20_000)))
+    result = build_xtx_document(draft, identity(draft), created_on=date(2026, 1, 1), details=extra)
+    assert not any("reconciliation" in key for key in result.missing)
+    root = ET.fromstring(result.xml)
+    assert root.findtext(".//{*}ABH00215") == "80000"
+    assert root.findtext(".//{*}ABH00217") == "20000"
+    assert root.findtext(".//{*}ABH00250") == "20000"
+    assert [row.text for row in root.findall(".//{*}ABH00300")] == ["10000", "20000"]
+    assert [row.text for row in root.findall(".//{*}ABI00240")] == ["30000"]
+    schema = os.getenv("ETAX_OFFICIAL_XSD")
+    if schema:
+        report = validate_xtx_against_xsd(result.xml, Path(schema))
+        assert report.ok, report.issues
+
+
+def test_insurance_payment_and_deduction_must_not_be_confused(
+    synthetic_draft: FilingDraftResult,
+) -> None:
+    draft = synthetic_draft
+    # Prima pagada de 80k no significa un 控除 de 80k.
+    draft.tax.deduction_breakdown.life_insurance = 80_000
+    extra = replace(details(draft), insurance=(InsurancePayment("new_life", 80_000, 0),))
+    result = build_xtx_document(draft, identity(draft), created_on=date(2026, 1, 1), details=extra)
+    assert "insurance_reconciliation:life_insurance" in result.missing
+    extra = replace(extra, insurance=(InsurancePayment("earthquake", 20_000, 0),
+                                      InsurancePayment("old_damage", 10_000, 0)))
+    result = build_xtx_document(draft, identity(draft), created_on=date(2026, 1, 1), details=extra)
+    assert "damage_contract_election" in result.missing
+
+
 def test_official_xsd_and_rdf_negative_cases(synthetic_draft: FilingDraftResult) -> None:
     path = os.environ.get("ETAX_OFFICIAL_XSD")
     if not path:
@@ -239,3 +283,33 @@ def test_tax_office_must_match_the_profile(synthetic_draft: FilingDraftResult) -
     other = XtxIdentity(valid.user_id, valid.name, valid.address, "01143")
     with pytest.raises(ValueError, match="oficina"):
         build_xtx_document(draft, other, created_on=date(2026, 1, 1))
+
+
+@pytest.mark.parametrize("category", ["medical", "dependents", "spouse", "other"])
+def test_unimplemented_deduction_schedules_remain_explicitly_blocked(
+    synthetic_draft: FilingDraftResult, category: str,
+) -> None:
+    draft = synthetic_draft
+    setattr(draft.tax.deduction_breakdown, category, 100_000)
+    result = build_xtx_document(draft, identity(draft), created_on=date(2026, 1, 1),
+                                details=details(draft))
+    assert "deduction_schedule:" + category in result.missing
+    assert not result.ready_for_submission
+
+
+def test_white_filing_does_not_receive_a_blue_annex(synthetic_draft: FilingDraftResult) -> None:
+    draft = synthetic_draft
+    draft.filing_type = "shiroiro"
+    result = build_xtx_document(draft, identity(draft), created_on=date(2026, 1, 1),
+                                details=details(draft))
+    assert "shiroiro_annex" in result.missing
+    assert ET.fromstring(result.xml).find(".//{*}KOA210") is None
+
+
+def test_refund_requires_verified_refund_account(synthetic_draft: FilingDraftResult) -> None:
+    draft = synthetic_draft
+    draft.tax.final_amount = -1_000
+    result = build_xtx_document(draft, identity(draft), created_on=date(2026, 1, 1),
+                                details=details(draft))
+    assert "refund_account" in result.missing
+    assert not result.ready_for_submission

@@ -17,7 +17,7 @@ COPY pyproject.toml README.md ./
 COPY app ./app
 COPY alembic.ini ./
 COPY alembic ./alembic
-RUN pip install --upgrade pip && pip install .
+RUN pip install --upgrade pip && pip install ".[etax]"
 
 EXPOSE 8200
 

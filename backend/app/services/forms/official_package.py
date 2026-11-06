@@ -192,7 +192,7 @@ def _manifest(
             ("青色申告決算書の2・3ページは未記入です。必要事項を確認し、記入してください。"
              if result.filing_type != FilingType.SHIROIRO.value
              else "収支内訳書の2ページは未記入です。必要事項を確認し、記入してください。"),
-            "XTXは公式スキーマの検証完了まで含まれません。",
+            "XTXは本人情報・明細・提出内容の検証が完了するまで含まれません。",
             "提出前にe-Taxまたは税務署提出用として内容を必ず確認してください。",
             "マイナンバー等の最終確認・追記が必要な場合があります。",
         ],
@@ -214,13 +214,14 @@ def build_official_package(
         Bytes del ZIP con PDFs oficiales, e-Tax/CSV, libros y manifiesto.
     """
     if include_xtx:
-        raise ValueError("XTX no disponible: el esquema oficial aún no está validado")
+        raise ValueError("XTX no disponible: falta completar la revisión para presentar")
     files = _base_files(session, fy, result, include_xtx=include_xtx)
     notice = (
         "BORRADOR PARA REVISIÓN — NO SE ENVÍA AUTOMÁTICAMENTE\n"
         "Los PDF contienen campos sin completar; verifica cada documento.\n"
         "Las deducciones sin categoría definida no se asignan automáticamente a su casilla.\n"
-        "NO INCLUYE XTX: el formato aún no cumple el XSD oficial. "
+        "NO INCLUYE XTX: validar el XSD oficial no acredita aptitud para presentar. "
+        "Falta completar la revisión fiscal y de presentación. "
         "Completa la declaración con la herramienta oficial.\n"
     )
     files.insert(0, PackageFile("00_LEER_REVISION.txt", notice.encode("utf-8"),

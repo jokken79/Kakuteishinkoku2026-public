@@ -12,6 +12,20 @@ jobs:
       COMPOSE_PROJECT_NAME: kakutei-ci-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare pinned official XSD
+        uses: ./.github/actions/official-xsd
+      - name: Mount public schema tree read-only in isolated container
+        run: |
+          override="$RUNNER_TEMP/compose-xtx.yml"
+          cat > "$override" <<EOF
+          services:
+            backend:
+              environment:
+                ETAX_OFFICIAL_XSD: /opt/etax-xsd/$ETAX_XSD_RELATIVE
+              volumes:
+                - $ETAX_XSD_ROOT:/opt/etax-xsd:ro
+          EOF
+          echo "COMPOSE_FILE=$GITHUB_WORKSPACE/docker-compose.yml:$override" >> "$GITHUB_ENV"
       - name: Build and start isolated stack
         run: docker compose up -d --build
       - name: Apply migrations to empty test database
@@ -21,6 +35,8 @@ jobs:
           curl --fail --retry 30 --retry-all-errors --retry-delay 2 --connect-timeout 3 http://127.0.0.1:8200/api/v1/health
           curl --fail --retry 30 --retry-all-errors --retry-delay 2 --connect-timeout 3 http://127.0.0.1:5200/api/v1/onboarding/status
           curl --fail http://127.0.0.1:5200/ | grep -q '<html'
+      - name: Review synthetic XTX against official XSD and verify download block
+        run: docker compose exec -T -e XTX_SYNTHETIC_SMOKE=1 backend python - < tools/docker_xtx_smoke.py
       - name: Verify data survives backend recreation
         run: |
           docker compose exec -T backend python -c "from pathlib import Path; Path('/app/data/synthetic-smoke.txt').write_text('synthetic')"

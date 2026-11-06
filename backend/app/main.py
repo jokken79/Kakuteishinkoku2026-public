@@ -44,6 +44,7 @@ from app.api import (
     remittances,
     sales_documents,
     tax,
+    xtx,
     year_end,
 )
 from app.core.config import Settings, get_settings
@@ -116,6 +117,7 @@ def create_app() -> FastAPI:
     app.include_router(income.router, prefix=settings.api_prefix)
     app.include_router(mixed_expenses.router, prefix=settings.api_prefix)
     app.include_router(filing.router, prefix=settings.api_prefix)
+    app.include_router(xtx.router, prefix=settings.api_prefix)
     app.include_router(consumption.router, prefix=settings.api_prefix)
     app.include_router(onboarding.router, prefix=settings.api_prefix)
     app.include_router(past_filings.router, prefix=settings.api_prefix)

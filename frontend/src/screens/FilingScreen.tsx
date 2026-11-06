@@ -21,6 +21,7 @@ import { formatAmount, formatYen } from "../lib/format";
 import { Card, ErrorState, Label, Skeleton } from "../components/ui";
 import { EstimatedPrepayment } from "../components/EstimatedPrepayment";
 import { FilingTypeByYear } from "../components/FilingTypeByYear";
+import { XtxReviewForm } from "../components/XtxReviewForm";
 import { Icon, type IconName } from "../components/Icon";
 import { HelpSubtitle, HelpTerm } from "../components/HelpTerm";
 import {
@@ -658,7 +659,7 @@ function DownloadsCard({ filing }: { filing: FilingSummary }) {
         <DownloadRow href={filingOfficialPackageUrl(id)} icon="archive" title="申告書類の下書き ZIP"
           desc="PDF・CSV・帳簿。XTX no está incluido" tag="ZIP" />
       </div>
-      <p className="mt-3 text-sm">Revisa el aviso dentro del ZIP: el XTX está deshabilitado hasta validar el XSD oficial. Las deducciones sin categoría definida no se asignan automáticamente a su casilla. En 青色申告決算書 las páginas 2 y 3 están en blanco; en 白色, la página 2 de la 収支内訳書 está en blanco. Complétalas cuando corresponda. La validación de formato no confirma la aceptación por e-Tax.</p>
+      <p className="mt-3 text-sm">Revisa el aviso dentro del ZIP: el XTX requiere completar la identidad, los detalles y las verificaciones de presentación. Las deducciones sin categoría definida no se asignan automáticamente a su casilla. En el PDF de 青色申告決算書 las páginas 2 y 3 están en blanco; en 白色, la página 2 de la 収支内訳書 está en blanco. Complétalas cuando corresponda. La validación de formato no confirma la aceptación por e-Tax.</p>
 
       <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {PDF_FORMS.map((f) => (
@@ -679,7 +680,7 @@ function DownloadsCard({ filing }: { filing: FilingSummary }) {
         </p>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <p className="rounded-lg border border-[var(--color-hairline)] p-3 text-sm">
-            XTX no disponible: la estructura aún no cumple el esquema oficial de e-Tax.
+            XTX: completa la identidad y los detalles; revisa el XSD y los requisitos pendientes debajo.
           </p>
           <DownloadRow
             href={filingCsvUrl(id)}
@@ -689,6 +690,7 @@ function DownloadsCard({ filing }: { filing: FilingSummary }) {
             tag="CSV"
           />
         </div>
+        <XtxReviewForm key={id} draftId={id} />
       </div>
     </Card>
   );
@@ -775,7 +777,7 @@ export function DownloadRow({
 // --- Guia e-Tax + disclaimer ------------------------------------------------
 
 const ETAX_STEPS = [
-  "XTXの出力は公式スキーマの検証完了まで停止しています。",
+  "XTXは本人情報・明細・公式XSD・提出内容の検証が完了するまでダウンロードできません。",
   "国税庁の確定申告書等作成コーナーで内容を入力し、確認してください。",
   "提出方法や必要な書類は国税庁または税務署にご確認ください。",
 ];

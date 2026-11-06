@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     )
 
     fiscal_year_default: int = 2025
+    # Ruta del árbol oficial montado localmente; nunca suministrada por el navegador.
+    etax_official_xsd: str | None = None
 
     # --- OCR (Fase 2) ---------------------------------------------------
     # Carpeta donde se archivan las imagenes de recibos (Evidence, 電帳法).

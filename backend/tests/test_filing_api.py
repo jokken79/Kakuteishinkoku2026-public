@@ -105,6 +105,76 @@ def session() -> Generator[Session, None, None]:
 # --- Draft ----------------------------------------------------------------
 
 
+def test_xtx_transient_review_and_direct_download_are_private(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "etax_official_xsd", None)
+    draft = client.post("/api/v1/filing/draft?year=2025").json()
+    url = f"/api/v1/filing/{draft['draft_id']}/xtx"
+    profile = client.get(url + "/context")
+    assert profile.status_code == 200
+    assert profile.headers["cache-control"] == "no-store"
+    assert "my_number" not in profile.text and "user_id" not in profile.text
+    payload = {"identity": {"user_id": "1234567890123456", "my_number": "123456789012",
+                            "birth_date": "1980-01-01"}}
+    dependency = app.dependency_overrides[get_db]()
+    db = next(dependency)
+
+    def snapshot() -> list[list[tuple[object, ...]]]:
+        return [[tuple(row) for row in db.execute(table.select())]
+                for table in Base.metadata.sorted_tables]
+
+    before = snapshot()
+    try:
+        response = client.post(url + "/review", json=payload)
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
+        assert response.json()["ready_for_submission"] is False
+        assert "xsd_missing" in response.json()["missing"]
+        assert payload["identity"]["user_id"] not in response.text
+        assert payload["identity"]["my_number"] not in response.text
+        blocked = client.post(url, json=payload)
+        assert blocked.status_code == 409
+        assert blocked.json()["detail"]["code"] == "xtx_not_ready"
+        assert blocked.headers["cache-control"] == "no-store"
+        assert "content-disposition" not in blocked.headers
+        assert snapshot() == before
+    finally:
+        dependency.close()
+
+
+@pytest.mark.parametrize("invalid", [
+    {"identity": {"user_id": "PRIVATE-INVALID-IDENTITY"}},
+    {"identity": {"user_id": "1234567890123456", "birth_date": "PRIVATE-BIRTH"}},
+    {"identity": {"user_id": "1234567890123456"}, "ready_for_submission": True},
+    {"identity": {"user_id": "1234567890123456"}, "details": {
+        "payers": [{"kind": "jigyo", "name": "PRIVATE-PAYER", "location": "PRIVATE-ADDRESS",
+                    "gross": True, "withholding": 0}]}},
+])
+def test_xtx_validation_never_echoes_sensitive_inputs(
+    client: TestClient, invalid: dict[str, object],
+) -> None:
+    draft = client.post("/api/v1/filing/draft?year=2025").json()
+    url = f"/api/v1/filing/{draft['draft_id']}/xtx"
+    for suffix in ("/review", ""):
+        response = client.post(url + suffix, json=invalid)
+        assert response.status_code == 422
+        assert "PRIVATE" not in response.text and "1234567890123456" not in response.text
+        assert response.headers["cache-control"] == "no-store"
+
+
+def test_xtx_review_rejects_unverified_year(client: TestClient) -> None:
+    client.post("/api/v1/fiscal-years", json={"year": 2026})
+    draft = client.post("/api/v1/filing/draft?year=2026").json()
+    response = client.post(f"/api/v1/filing/{draft['draft_id']}/xtx/review", json={
+        "identity": {"user_id": "1234567890123456"},
+    })
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "filing_format_not_verified"
+
+
 def test_confirmed_year_filing_type_changes_calculation_only_for_that_year(
     client: TestClient,
 ) -> None:
