@@ -15,6 +15,14 @@ runs:
         cabextract -q -d "$root" "$cab"
         schema=$(find "$root" -name RKO0010-250.xsd -print -quit)
         test -n "$schema"
+        # CAB con rutas Shift-JIS: GITHUB_ENV solo conserva Unicode válido.
+        # Renombrar el directorio contenedor mantiene intactos XSD e includes.
+        source_root=$(dirname "$(dirname "$schema")")
+        test "$(dirname "$source_root")" = "$root"
+        test ! -e "$root/schema"
+        mv -- "$source_root" "$root/schema"
+        schema="$root/schema/shotoku/RKO0010-250.xsd"
+        test -f "$schema"
         echo "ETAX_OFFICIAL_XSD=$schema" >> "$GITHUB_ENV"
         echo "ETAX_XSD_ROOT=$root" >> "$GITHUB_ENV"
         echo "ETAX_XSD_RELATIVE=${schema#"$root/"}" >> "$GITHUB_ENV"

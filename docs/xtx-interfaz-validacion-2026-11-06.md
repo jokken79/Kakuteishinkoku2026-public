@@ -53,6 +53,10 @@ no se incluye ninguna declaración ni base de datos en la imagen.
 La acción `.github/actions/official-xsd` descarga el CAB público KSK2 y exige SHA-256
 `48dc25a89a2b82a2b629f021e1779240cb2fe9f7e0c173e23239793feb4dfb55`.
 Un cambio del proveedor requiere revisar el nuevo paquete, nunca saltar la comprobación.
+El contenedor de los XSD se normaliza a un nombre ASCII antes de exportar rutas:
+el CAB usa nombres Shift-JIS que no sobreviven intactos a `GITHUB_ENV` en Linux.
+La primera ejecución de CI detectó este defecto de empaquetado y se corrigió sin
+modificar el contenido de los esquemas.
 CI valida el catálogo de 692 definiciones y los documentos sintéticos con lxml.
 Docker smoke crea PostgreSQL y volúmenes exclusivos del run, aplica migraciones,
 revisa el XTX sintético vía HTTP contra el XSD montado y exige 409 en la descarga.
